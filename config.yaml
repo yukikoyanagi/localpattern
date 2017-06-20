@@ -1,0 +1,33 @@
+# Configurations for locpat package
+# column numbers are 0-based
+hbond:
+  donor_col: 12
+  accpt_col: 13
+  res_cols:
+    - 4
+    - 5
+    - 6
+    - 7
+  rot_cols:
+    - 50
+    - 51
+    - 52
+    - 53
+    - 54
+    - 55
+    - 56
+    - 57
+    - 58
+  flags_col: 21
+
+tbond:
+  left_col: 6
+  right_col: 7
+  flags_col: 15
+  vdw_col: 21
+  rot_phi: 10
+  rot_cols:
+    - 11
+    - 12
+    - 13
+  res_col: 2
