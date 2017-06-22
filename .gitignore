@@ -1,4 +1,4 @@
 .idea
 .cache
-.pyc
+*.pyc
 __pycache__

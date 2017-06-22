@@ -64,22 +64,25 @@ class Protein(object):
             return
         with open(tfile) as tf:
             for line in tf:
+                cols = line.split()
                 if cols[cfg['tbond']['flags_col']][2:4] != '__':
                     continue
-                cols = line.split()
                 lidx = (int(cols[cfg['tbond']['left_col']]) - 1) * 3 + 1
                 ridx = (int(cols[cfg['tbond']['right_col']]) - 1) * 3 + 1
+                # Only consider the case where lidx < ridx; otherwise we'll
+                # have two entries for each tbond.
+                if not lidx < ridx:
+                    continue
                 res = cols[cfg['tbond']['res_col']]
                 phi = float(cols[cfg['tbond']['rot_phi']])
-                u = map(float,
-                              [cols[i] for i in cfg['tbond']['rot_cols']])
-                rot = conv.ev2mat(phi, u)
+                u = map(float, [cols[i] for i in cfg['tbond']['rot_cols']])
+                rot = conv.mat2lst(conv.ev2mat(phi, u))
                 vdw = float(cols[cfg['tbond']['vdw_col']])
                 self.tbonds.append(Tbond(lidx, ridx, res, rot, vdw))
 
 
 
-    def find_pattern(self, center, opts):
+    def findpattern(self, center, opts):
         """
         Return a Pattern object around *center* atom using *opts*.
         :param center: index of the central atom for the pattern

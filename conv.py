@@ -6,7 +6,6 @@
 #
 # Description: Helper functions to perform Euler vector <-> rotation
 #  matrix conversions.
-#  TODO: Accept non-unit vector as well as angle & unit vector combi.
 #
 # Author: Yuki Koyanagi
 # History:
@@ -105,3 +104,22 @@ def ev2box(angle, u):
     M = np.dot(makemagicmat(), B)
     a, v = mat2ev(M)
     return coord2idx(map(lambda x: x*a, v))
+
+
+def lst2mat(l):
+    """
+    Convert a list to SO3 matrix
+    :param l:
+    :return: 3x3 np.ndarray
+    """
+    m = np.asarray(l).reshape((3, 3))
+    assert math.fabs(np.linalg.det(m) - 1) < 1**-6
+    return m
+
+def mat2lst(m):
+    """
+    Convert 3x3 matrix to list
+    :param m: ndarray object
+    :return: list
+    """
+    return m.flatten().tolist()

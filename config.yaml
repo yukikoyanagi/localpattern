@@ -25,9 +25,9 @@ tbond:
   right_col: 7
   flags_col: 15
   vdw_col: 21
-  rot_phi: 10
+  rot_phi: 13
   rot_cols:
+    - 10
     - 11
     - 12
-    - 13
   res_col: 2
