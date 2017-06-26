@@ -9,37 +9,19 @@
 #
 from collections import namedtuple
 
-class Bond(namedtuple('Bond', 'type start end twisted')):
-    """
-    Class representing an h- or t-bond.
-    Attributes:
-        type: either h or t
-        start, end: id of start (donor/left) and end (acceptor/right) atoms
-        twisted: Boolean, whether the bond is twisted
-    """
-    __slots__ = ()
+"""Bond represents a h- or t-bond.
+type: either h or t
+start, end: id of start (donor/left) and end (acceptor/right) atoms
+ex. 6: 7th atom in the first segment, 102: 3rd atom in the second segment
+twisted: Boolean, whether the bond is twisted
+"""
+Bond = namedtuple('Bond', 'type start end twisted')
 
-    def __eq__(self, other):
-        return (self.type == other.type and self.twisted == other.twisted)
-
-    def __ne__(self, other):
-        return not self == other
-
-
-class Atom(namedtuple('Atom', 'position residue')):
-    """
-    Class representing an atom along a backbone segment.
-    Attributes:
-        position: the atom's position along the (entire) backbone
-        residue: the residue class (where appropriate) for the atom
-    """
-    __slots__ = ()
-
-    def __eq__(self, other):
-        return self.residue == other.residue
-
-    def __ne__(self, other):
-        return not self == other
+"""Atom represents an atom along a backbone segment.
+position: the atom's position along the backbone segment
+residue: the residue class (where appropriate) for the atom
+"""
+Atom = namedtuple('Atom', 'position residue')
 
 
 class Segment(list):
@@ -48,19 +30,31 @@ class Segment(list):
 
 class Pattern(object):
     """
-    Local pattern description of a hbond.
+    Local pattern description of a hbond. This is simply a container for
+    segments and bonds.
     Attributes:
-        segments: set of Segment objects.
+        segments: list of Segment objects. Segments are ordered as follows;
+        1. donor-side segment of the central hbond
+        2. acceptor-side segment of the central hbond
+        Then we move along the 1st segment and list connected segments in the
+        order of appearance. Then 2nd segment, and so on.
         bonds: list of Bond objects
+        rotation: the rotation associated to the central bond
     """
-    def __init__(self, segments=None, bonds=None):
+    def __init__(self, segments=None, bonds=None, rotation=None):
         if not segments:
-            segments = set()
+            segments = []
         self.segments = segments
         if not bonds:
             bonds = []
         self.bonds = bonds
+        self.rotation = rotation
 
     def __eq__(self, other):
-        if self.segments != other.segments or self.bonds != other.bonds:
-            return False
+        return self.segments == other.segments and self.bonds == other.bonds
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __hash__(self):
+        return hash((self.segments, self.bonds))
