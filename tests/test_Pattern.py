@@ -13,6 +13,15 @@ def test_equality():
     assert A == B
     assert A != C
 
+    # test equality of Bond objects
+    s = Pattern.Bond('h', 21, 35, False)
+    t = Pattern.Bond('h', 45, 35, False)
+    u = Pattern.Bond('t', 33, 99, True)
+    v = Pattern.Bond('t', 33, 99, False)
+    assert s == t
+    assert u != v
+    assert s != v
+
     # test equality of Pattern objects
     P1 = Pattern.Pattern()
     P2 = Pattern.Pattern()
