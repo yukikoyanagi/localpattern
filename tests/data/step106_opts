@@ -1,0 +1,6 @@
+--window-size 7
+--nearby-remotes 4
+--nearby-twists 0
+--residue-scheme 2
+--always-include-remotes
+--show-residues

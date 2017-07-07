@@ -10,7 +10,10 @@
 import re
 from config import cfg
 from collections import namedtuple
+from itertools import groupby
+from operator import itemgetter
 import conv
+import Pattern
 
 Hbond = namedtuple('Hbond', 'donor acceptor residue rotation')
 Tbond = namedtuple('Tbond', 'left right residue rotation vdw')
@@ -80,12 +83,163 @@ class Protein(object):
                 vdw = float(cols[cfg['tbond']['vdw_col']])
                 self.tbonds.append(Tbond(lidx, ridx, res, rot, vdw))
 
-
-
     def findpattern(self, center, opts):
         """
-        Return a Pattern object around *center* atom using *opts*.
-        :param center: index of the central atom for the pattern
-        :param opts: Opts object (?)
+        Return a Pattern object around *center* Hbond using *opts*.
+        :type center: Hbond
+        :param center: hbond object for the central bond of the pattern
+        :param opts: Option object
         :return: a Pattern object
         """
+        dseg = Pattern.Segment()
+        dseg.append(center.donor)
+        aseg = Pattern.Segment()
+        aseg.append(center.acceptor)
+
+        twist = self.istwisted(center.rotation)
+        bnd = Pattern.Bond('H', center.donor, center.acceptor, twist, None)
+        rpat = Pattern.Pattern(segments=[dseg, aseg],
+                               bonds=[bnd],
+                               residue=center.residue,
+                               rotation=center.rotation)
+        rpat.handleresidue(opts.residue)
+
+        # We measure the 'radius' of a pattern by the length of the
+        # donor-side segment for the central hbond, which is the first
+        # segment in self.segments; we ignore the end of the backbone
+        # and just continue. The length should be 2*w+1, where w is the
+        # window size.
+        #while max(map(len, rpat.segments)) < 2*opts.window + 1:
+        cseg, = (s for s in rpat.segments if center.donor in s)
+        while len(cseg) < 2*opts.window + 1:
+            rpat = self.grow(rpat)
+            cseg, = (s for s in rpat.segments if center.donor in s)
+
+        # Clean up rpat
+        # We need to limit the pattern according to the configuration and
+        # _opts parameters
+        # First trim the pattern according to the config parameters
+        # 'max_hbond_level' and 'max_tbond_level'.
+        rpat.trim(Pattern.Bond('H', center.donor, center.acceptor,
+                               self.istwisted(center.rotation), None),
+                  cfg['max_hbond_level'],
+                  cfg['max_tbond_level'],
+                  opts)
+
+        # Apply --nearby-remotes parameter
+        atoms = [a for seg in rpat.segments for a in seg]
+        for hbnd in self.hbonds:
+            b = Pattern.Bond('H', hbnd.donor, hbnd.acceptor,
+                             self.istwisted(hbnd.rotation), None)
+            if b not in rpat.bonds:
+                if (b.start in atoms
+                    and min([rpat.dist(b.start, center.donor),
+                             rpat.dist(b.start, center.acceptor)]) <
+                        opts.remotes + 1):
+                    rpat.bonds.append(Pattern.Bond(b.type, b.start,
+                                                   -99, b.twisted, b.vdw))
+                elif (b.end in atoms
+                      and min([rpat.dist(b.end, center.donor),
+                               rpat.dist(b.end, center.acceptor)]) <
+                        opts.remotes + 1):
+                    rpat.bonds.append(Pattern.Bond(b.type, -99,
+                                                   b.end, b.twisted, b.vdw))
+
+        # Apply --neaby-twists parameter
+        if opts.twists <= 0:
+            newbonds = []
+            for bond in rpat.bonds:
+                if (bond.start == center.donor and
+                        bond.end == center.acceptor and
+                        opts.twists == 0):
+                    newbonds.append(bond)
+                else:
+                    newbonds.append(Pattern.Bond(bond.type, bond.start,
+                                                 bond.end, False, bond.vdw))
+            rpat.bonds = newbonds
+
+        # We need to replace atom index by the local index, i.e.
+        # 0, 1, 2,... for the donor-segment for the central bond
+        # 100, 101, ... for the acceptor-segment for the central bond
+        # 200, 201, ... for the segment connected to the '0' segment at the
+        # smallest index
+        # ...and so on
+        cbond = Pattern.Bond('H', center.donor, center.acceptor,
+                             self.istwisted(center.rotation), None)
+        lpat = rpat.localise(cbond)
+
+        return lpat
+
+    def istwisted(self, rotation):
+        """
+        We can determine whether a bond is twisted by looking at the last
+        entry (i.e. (3,3) entry).
+        :param rotation: a list of 9 entries in SO3 rotation matrix
+        :return: Boolean
+        """
+        assert len(rotation) == 9
+        return rotation[-1] < 0
+
+    def getbondsat(self, pos):
+        """
+        Get a list of bonds (Hbond or Tbond) at the *pos* position.
+        :param pos: int; atom id
+        :return: a list of bonds
+        """
+        result = []
+        for hbnd in self.hbonds:
+            if hbnd.donor == pos or hbnd.acceptor == pos:
+                result.append(hbnd)
+        for tbnd in self.tbonds:
+            if tbnd.left == pos or tbnd.right == pos:
+                result.append(tbnd)
+        return result
+
+    def grow(self, pat):
+        """
+        Grow a Pattern object by one; i.e. return a Pattern object which
+        include the edge/atom pairs which are adjacent to the given Pattern
+        :param pat: Pattern object
+        :return: A 'grown' Pattern object
+        """
+        newsegs = pat.segments[:]
+        newbonds = pat.bonds[:]
+        for seg in pat.segments:
+            for edge in [seg[0], seg[-1]]:
+                bonds = self.getbondsat(edge)
+                for bond in bonds:
+                    if isinstance(bond, Hbond):
+                        b = Pattern.Bond('H', bond.donor, bond.acceptor,
+                                         self.istwisted(bond.rotation), None)
+                    elif isinstance(bond, Tbond):
+                        b = Pattern.Bond('T', bond.left, bond.right,
+                                         self.istwisted(bond.rotation),
+                                         bond.vdw)
+                    if b not in newbonds:
+                        newbonds.append(b)
+                        # We simply add both ends as new segments to the
+                        # pattern, and clean up later.
+                        newsegs.append([b[1]])
+                        newsegs.append([b[2]])
+                if seg.index(edge) == 0:  # this is a left edge
+                    newsegs.append([edge - 1] + seg)
+                if seg.index(edge) == len(seg) - 1:  # this is a right edge
+                    newsegs.append(seg + [edge + 1])
+
+        # Now we need to clean up the pattern. Bonds simply needs sorting
+        pat.bonds = sorted(newbonds, key=itemgetter(1))
+        # let's first remove duplicate atoms
+        atoms = set([atom for segment in newsegs for atom in segment])
+        seq = sorted(atoms)
+        # then we split the sequence whenever there is a gap.
+        # Technically the adjacent atoms may not be connected to each other
+        # in a pattern; if atom a and b lie adjacent to each other, but both
+        #  are window_size away from the central bond, then they should not
+        # be connected. But in practice this is not a problem, since two
+        # patterns with the same opts parameters cannot differ by this
+        # 'missing' edge.
+        pat.segments = [map(itemgetter(1), g)
+                        for k, g
+                        in groupby(enumerate(seq), lambda (i, x): i-x)]
+        return pat
+
