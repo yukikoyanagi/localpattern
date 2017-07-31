@@ -67,6 +67,8 @@ def test_dist():
     p.bonds = [a, b]
 
     assert p.dist(7, 23) == 10
+    assert p.dist(7, 23, hlimit=0, tlimit=1) == float('inf')
+    assert p.dist(7, 23, hlimit=1, tlimit=0) == float('inf')
 
     p.bonds.append(c)
     assert p.dist(7, 23) == 4
@@ -75,8 +77,17 @@ def test_dist():
     d = Pattern.Bond('T', 13, 33, True, 5)
     p.bonds.append(d)
     assert p.dist(7, 23) == 4
+    assert p.dist(25, 34) == 5
+    assert p.dist(25, 34, tlimit=2) == 5
+    assert p.dist(25, 34, tlimit=1) == float('inf')
     p.bonds.remove(b)
-    assert p.dist(7, 23) == 999
+    assert p.dist(7, 23) > 999
+
+    e = Pattern.Bond('H', 25, 34, False, None)
+    p.bonds.append(b)
+    p.bonds.append(e)
+    assert p.dist(25, 34, hlimit=1, tlimit=2) == 1
+    assert p.dist(25, 34, hlimit=0, tlimit=2) == 5
 
 
 def test_localise():

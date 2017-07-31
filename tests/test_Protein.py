@@ -72,6 +72,16 @@ def test_grow():
     expected.bonds.append(Pattern.Bond('T', 31, 46, False, 3.14))
     assert prt.grow(pat) == expected
 
+    prt.tbonds = []
+    h2 = Protein.Hbond(31, 62, 'ABCD', range(9))
+    prt.hbonds.append(h2)
+    pat = Pattern.Pattern(segments=[[30], [61]],
+                          bonds=[Pattern.Bond('H', 30, 61, False, None)],
+                          residue='ABCD',
+                          rotation=h1.rotation)
+    pat = prt.grow(pat)
+    assert len(pat.bonds) == 2
+
 
 def test_findpattern():
     cd = os.path.dirname(__file__)
@@ -115,4 +125,16 @@ def test_findpattern():
                           residue='AAXX',
                           rotation=h1.rotation)
     assert pat == exp
+
+    opt = Option.Option(os.path.join(cd, 'data', 'step105_opts'))
+    p = Protein.Protein('test3')
+    hf = os.path.join(cd, 'data', 'tst001.txt')
+    tf = os.path.join(cd, 'data', 'tert001.txt')
+    p.fromfiles(hf, tf)
+    hbnd = p.hbonds[-2]
+    pat = p.findpattern(hbnd, opt)
+    assert len(pat.bonds) == 4
+    tbonds = [b for b in pat.bonds if b.type == 'T']
+    assert len(tbonds) == 1
+
 

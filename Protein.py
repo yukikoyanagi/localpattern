@@ -104,16 +104,12 @@ class Protein(object):
                                rotation=center.rotation)
         rpat.handleresidue(opts.residue)
 
-        # We measure the 'radius' of a pattern by the length of the
-        # donor-side segment for the central hbond, which is the first
-        # segment in self.segments; we ignore the end of the backbone
-        # and just continue. The length should be 2*w+1, where w is the
-        # window size.
-        #while max(map(len, rpat.segments)) < 2*opts.window + 1:
-        cseg, = (s for s in rpat.segments if center.donor in s)
-        while len(cseg) < 2*opts.window + 1:
+        # We grow rpat by opts.window. This ignores config parameters
+        # 'max_hbond_level' and 'max_tbond_level'.
+        i = opts.window
+        while i:
             rpat = self.grow(rpat)
-            cseg, = (s for s in rpat.segments if center.donor in s)
+            i -= 1
 
         # Clean up rpat
         # We need to limit the pattern according to the configuration and
@@ -126,7 +122,9 @@ class Protein(object):
                   cfg['max_tbond_level'],
                   opts)
 
-        # Apply --nearby-remotes parameter
+        # Apply --nearby-remotes parameter. We only apply this to hbonds.
+        # Remote bonds are the bonds, where only one of the ends is inside
+        # the pattern.
         atoms = [a for seg in rpat.segments for a in seg]
         for hbnd in self.hbonds:
             b = Pattern.Bond('H', hbnd.donor, hbnd.acceptor,
@@ -145,7 +143,9 @@ class Protein(object):
                     rpat.bonds.append(Pattern.Bond(b.type, -99,
                                                    b.end, b.twisted, b.vdw))
 
-        # Apply --neaby-twists parameter
+        # Apply --nearby-twists parameter. Note nearby-twists takes only
+        # three values; -1, 0 and window-size. So if twists > 0, we can
+        # include twist information on all bonds.
         if opts.twists <= 0:
             newbonds = []
             for bond in rpat.bonds:
@@ -226,8 +226,7 @@ class Protein(object):
                 if seg.index(edge) == len(seg) - 1:  # this is a right edge
                     newsegs.append(seg + [edge + 1])
 
-        # Now we need to clean up the pattern. Bonds simply needs sorting
-        pat.bonds = sorted(newbonds, key=itemgetter(1))
+        # Now we need to clean up the pattern.
         # let's first remove duplicate atoms
         atoms = set([atom for segment in newsegs for atom in segment])
         seq = sorted(atoms)
@@ -241,5 +240,26 @@ class Protein(object):
         pat.segments = [map(itemgetter(1), g)
                         for k, g
                         in groupby(enumerate(seq), lambda (i, x): i-x)]
+
+        # We need to add the bonds which have both start and end atoms at
+        # the ends of segments. They do not get captured by the above,
+        # but are clearly internal to the pattern.
+        ends = [p for seg in pat.segments for p in [seg[0], seg[-1]]]
+        for end in ends:
+            for bond in self.getbondsat(end):
+                if isinstance(bond, Hbond):
+                    b = Pattern.Bond('H', bond.donor, bond.acceptor,
+                                     self.istwisted(bond.rotation), None)
+                elif isinstance(bond, Tbond):
+                    b = Pattern.Bond('T', bond.left, bond.right,
+                                     self.istwisted(bond.rotation),
+                                     bond.vdw)
+
+                if all([b[1] in ends,
+                        b[2] in ends,
+                        b not in newbonds]):
+                    newbonds.append(b)
+        pat.bonds = sorted(newbonds, key=itemgetter(1))
+
         return pat
 

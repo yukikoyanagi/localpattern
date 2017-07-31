@@ -97,6 +97,7 @@ class Pattern(object):
         :param center: self.Bond instance
         :param hlimit: int;
         :param tlimit: int;
+        :param opts: Option.Option instance
         :return: Trimmed pattern object
         """
         newsegs = []
@@ -115,8 +116,10 @@ class Pattern(object):
             if center.start in seg or center.end in seg:
                 nseg = []
                 for a in seg:
-                    if min([abs(a - center.start),
-                            abs(a - center.end)]) <= opts.window:
+                    if min(
+                            [self.dist(a, e, hlimit, tlimit) for e in
+                             [center.start, center.end]]
+                    ) <= opts.window:
                         nseg.append(a)
                 newsegs.append(sorted(nseg))
             else:
@@ -171,47 +174,61 @@ class Pattern(object):
             return any([self.lieswithin(s[0], center, s[1], s[2])
                         for s in segs])
 
-    def dist(self, start, end, visited=None):
+    def dist(self, start, end, hlimit=None, tlimit=None, visited=None):
         """
         Compute the distance between two atoms in a pattern.
         :param start: index of 'from' atom
         :param end: index of 'to' atom
-        :param visited: a list of bonds already traversed
-        :return: int;
+        :param visited: 3-tuple containing; path (seq. of atoms), # of hbonds
+        traversed, # of tbonds traversed.
+        :return: int, or float('inf') if end is unreachable from start
         """
         if visited is None:
-            visited = []
+            visited = ([], 0, 0)
+        if hlimit is None:
+            hlimit = 99
+        if tlimit is None:
+            tlimit = 99
 
+        if hlimit < 0 or tlimit < 0:
+            # We have exceeded hlimit and/or tlimit. This is an invalid path.
+            return float('inf')
+
+        if start == end:
+            return 0
+
+        newstarts = []
+
+        # Collect the atoms connected to start, but not already visited.
         # Select the unique segment that contains start
         seg, = (s for s in self.segments if start in s)
-        if end in seg:
-            return abs(start - end)
-        else:
-            bonds = [bond for bond in self.bonds
-                     if {bond.start, bond.end} & set(seg) and
-                     bond not in visited]
-            if len(bonds) == 0:  # We are at a dead end...
-                return 999
-            l = []
-            for bond in bonds:
-                if bond.start in seg:
-                    s = bond.start
-                    e = bond.end
-                else:
-                    s = bond.end
-                    e = bond.start
-                l.append((bond, s, e))
-            # for each of the connecting bonds, we return
-            # (dist from start to the end of bond + 1 (for the bond)
-            # + dist from the other end of bond to end) and return the min
-            # If all dist is > 999 (i.e. end is unreachable from start),
-            # return 999.
-            return min([999,
-                        min([abs(start - b[1]) +
-                             1 +
-                             self.dist(b[2], end, visited + [b[0]])
-                             for b in l])
-                        ])
+        idx = seg.index(start)
+        if idx > 0 and seg[idx-1] not in visited[0]:
+            newstarts.append((seg[idx-1], 'B'))
+        if idx < len(seg)-1 and seg[idx+1] not in visited[0]:
+            newstarts.append((seg[idx+1], 'B'))
+
+        bonds = [bond for bond in self.bonds
+                 if bond.start == start or bond.end == start]
+        for bond in bonds:
+            if bond.start == start and bond.end not in visited[0]:
+                newstarts.append((bond.end, bond.type))
+            elif bond.end == start and bond.start not in visited[0]:
+                newstarts.append((bond.start, bond.type))
+
+        if len(newstarts) == 0:
+            return float('inf')
+
+        newvis = (visited[0]+[start], 0, 0)
+
+        return min([
+            1 + self.dist(s[0], end,
+                          hlimit - s[1].count('H'),
+                          tlimit - s[1].count('T'),
+                          newvis)
+            for s in newstarts])
+
+
 
     def localise(self, center):
         """

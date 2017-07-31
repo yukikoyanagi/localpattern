@@ -4,7 +4,7 @@
 # can at most contain *max_tbond_level* tbond
 max_tbond_level: 1
 # The shortest path from any given atom in the pattern to the central bond
-# can at most contain *max_hbond_level* hbond, excluding the central bond.
+# can at most contain *max_hbond_level* hbond, including the central bond.
 max_hbond_level: 0
 
 # column numbers are 0-based
