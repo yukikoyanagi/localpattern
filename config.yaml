@@ -41,3 +41,13 @@ tbond:
     - 11
     - 12
   res_col: 2
+
+max_step: 791  # max step number to include in analysis
+min_for_cluster: 30  # min freq for clustering analysis
+
+abacus: True  # Run this on abacus cluster. Prepends all paths with $WORK.
+protdir: cdp/prot
+optsdir: cdp/opts
+tertdir: cdp/tertiary
+outdir: cdp
+cpu_per_node: 24
