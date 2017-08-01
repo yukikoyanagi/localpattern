@@ -20,7 +20,7 @@ import Option
 def getsteps(p):
     """Compute a list of steps to process on this core."""
     if p['abacus']:
-        n = os.environ['SLURM_JOB_NUM_NODES']
+        n = int(os.environ['SLURM_JOB_NUM_NODES'])
         return range(int(os.environ['SLURM_PROCID']),
                      p['max_step'] + 1,
                      p['cpu_per_node'] * n)
@@ -58,6 +58,9 @@ def main():
         for f in fs:
             protid = os.path.splitext(os.path.basename(f))[0]
             tertf = os.path.join(cfg['tertdir'], protid + '.txt')
+            if not os.path.exists(tertf):
+                # Corresponding tertiary file may not be present...
+                tertf = None
             prot = Protein.Protein(protid)
             prot.fromfiles(f, tertf)
             for bond in prot.hbonds:

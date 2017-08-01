@@ -119,8 +119,18 @@ def test_handleresidue():
     p.handleresidue(2)
     assert p.residue == 'LAEP'
     p.residue = r
+    p.handleresidue(0)
+    assert p.residue == 'XXXX'
+    p.residue = r
     p.handleresidue(4)
     assert p.residue == 'LLEE'
     p.residue = '??CX'
     p.handleresidue(3)
     assert p.residue == 'XXAX'
+
+
+def test_Pattern():
+    p = Pattern.Pattern('test')
+    p.segments = [Pattern.Segment([i]) for i in xrange(0, 101, 10)]
+    p.bonds = [Pattern.Bond('T', i, i+10, True, 3) for i in xrange(0, 101, 10)]
+    assert hash(p)

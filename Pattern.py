@@ -87,7 +87,8 @@ class Pattern(object):
         return not self == other
 
     def __hash__(self):
-        return hash((self.segments, self.bonds, self.residue))
+        return hash(((a for s in self.segments for a in s), tuple(self.bonds),
+                     self.residue))
 
     def trim(self, center, hlimit, tlimit, opts):
         """
@@ -228,8 +229,6 @@ class Pattern(object):
                           newvis)
             for s in newstarts])
 
-
-
     def localise(self, center):
         """
         Localise the pattern around the *center* bond. After being
@@ -299,14 +298,14 @@ class Pattern(object):
         :param scheme: int;
         :return: classified residues
         """
-        schemes = ['XLVIFMAGSCEKRDTYNQHWP',
+        schemes = [['XLVIFMAGSCEKRDTYNQHWP'],
                    list('XLVIFMAGSCEKRDTYNQHWP'),
                    ["LVIFM", "AGSC", "EKRDTYNQHW", "P", "X"],
                    ["LVIFM", "AGSC", "EKRDTYNQHWP", "X"],
                    ["LVIFMAGSC", "EKRDTYNQHWP", "X"]]
         done = ''
         for res in self.residue:
-            if res not in schemes[0]:
+            if res not in schemes[1]:
                 res = 'X'
             newres, = (s[0] for s in schemes[scheme] if res in s)
             done += newres
