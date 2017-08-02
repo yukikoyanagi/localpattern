@@ -72,9 +72,9 @@ def main():
         for x in patrot:
             if x[0] in filtered:
                 try:
-                    rotdict[x[0]].append(x[1])
+                    rotdict[str(x[0])].append(x[1])
                 except KeyError:
-                    rotdict[x[0]] = [x[1]]
+                    rotdict[str(x[0])] = [x[1]]
 
         with open(outfile, 'wb') as o:
             cPickle.dump(rotdict, o)

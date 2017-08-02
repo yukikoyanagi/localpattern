@@ -134,3 +134,5 @@ def test_Pattern():
     p.segments = [Pattern.Segment([i]) for i in xrange(0, 101, 10)]
     p.bonds = [Pattern.Bond('T', i, i+10, True, 3) for i in xrange(0, 101, 10)]
     assert hash(p)
+    d = {p: range(4)}
+    assert d[p] == range(4)

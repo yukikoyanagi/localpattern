@@ -36,6 +36,13 @@ class Bond(namedtuple('Bond', 'type start end twisted vdw')):
     def __hash__(self):
         return hash((self.type, self.start, self.end, self.twisted))
 
+    def __repr__(self):
+        if self.twisted:
+            s = '+'
+        else:
+            s = '-'
+        return '{}{}:{}{}'.format(self.type, self.start, self.end, s)
+
 
 """Atom represents an atom along a backbone segment.
 position: the atom's position along the backbone segment
@@ -89,6 +96,12 @@ class Pattern(object):
     def __hash__(self):
         return hash(((a for s in self.segments for a in s), tuple(self.bonds),
                      self.residue))
+
+    def __repr__(self):
+        seg = ':'.join([''.join(map(str, s)) for s in self.segments])
+        bonds = ''.join([str(b) for b in self.bonds])
+        res = self.residue
+        return '{}_{}_{}'.format(seg, bonds, res)
 
     def trim(self, center, hlimit, tlimit, opts):
         """
