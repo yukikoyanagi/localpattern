@@ -61,6 +61,7 @@ class Protein(object):
                 accidx = (int(cols[cfg['hbond']['accpt_col']]) - 1) * 3 + 2
                 residue = [cols[i] for i in cfg['hbond']['res_cols']]
                 rot = map(float, [cols[i] for i in cfg['hbond']['rot_cols']])
+                rot.append(float(cols[cfg['hbond']['rot_phi']]))
                 self.hbonds.append(Hbond(donidx, accidx, residue, rot))
 
         if not tfile:
@@ -79,7 +80,7 @@ class Protein(object):
                 res = cols[cfg['tbond']['res_col']]
                 phi = float(cols[cfg['tbond']['rot_phi']])
                 u = map(float, [cols[i] for i in cfg['tbond']['rot_cols']])
-                rot = conv.mat2lst(conv.ev2mat(phi, u))
+                rot = u + [phi]
                 vdw = float(cols[cfg['tbond']['vdw_col']])
                 self.tbonds.append(Tbond(lidx, ridx, res, rot, vdw))
 
@@ -177,8 +178,13 @@ class Protein(object):
         :param rotation: a list of 9 entries in SO3 rotation matrix
         :return: Boolean
         """
-        assert len(rotation) == 9
-        return rotation[-1] < 0
+        if len(rotation) == 9:
+            # We assume it's an SO3 matrix
+            return rotation[-1] < 0
+        elif len(rotation) == 4:
+            # We assume it's of the form (x, y, z, rot)
+            l = conv.mat2lst(conv.ev2mat(rotation[3], tuple(rotation[:3])))
+            return l[-1] < 0
 
     def getbondsat(self, pos):
         """

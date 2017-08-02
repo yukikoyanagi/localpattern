@@ -2,6 +2,7 @@ import os
 from .. import Protein
 from .. import Pattern
 from .. import Option
+from .. import conv
 
 
 def test_fromfiles():
@@ -15,7 +16,9 @@ def test_fromfiles():
     er = [0.491790, 0.011741, 0.870635,
           -0.303610, 0.939465, 0.158829,
           -0.816066, -0.342444, 0.465584]
-    assert max([i - j for (i, j) in zip(prt.hbonds[2].rotation, er)]) < 1**(-6)
+    ev = conv.mat2ev(conv.lst2mat(er))
+    el = [f for f in ev[1]] + [ev[0]]
+    assert max([i - j for (i, j) in zip(prt.hbonds[2].rotation, el)]) < 1**(-6)
     assert len(prt.tbonds) == 1
     assert prt.tbonds[0].left == 1267
     assert prt.tbonds[0].right == 1333
@@ -28,7 +31,9 @@ def test_fromfiles():
           0.8890919302939176,
           -0.09789256541322623,
           -0.44713821702361]
-    assert max([i - j for (i, j) in zip(prt.tbonds[0].rotation, er)]) < 1**(-6)
+    ev = conv.mat2ev(conv.lst2mat(er))
+    el = [f for f in ev[1]] + [ev[0]]
+    assert max([i - j for (i, j) in zip(prt.tbonds[0].rotation, el)]) < 1**(-6)
 
 
 def test_istwisted():
