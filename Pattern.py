@@ -9,6 +9,7 @@
 #
 from collections import namedtuple
 from operator import itemgetter
+from itertools import groupby
 
 
 class Bond(namedtuple('Bond', 'type start end twisted vdw')):
@@ -119,40 +120,36 @@ class Pattern(object):
             if self.lieswithin(seg, center, hlimit, tlimit):
                 newsegs.append(seg)
         self.segments = newsegs
+        # Some segments may have been removed. Need to clean up bonds.
+        self.correctbonds()
 
         # The first check using lieswithin does not catch the case,
         # where the other end of bond was close enough, so that the two
         # segments (one of the central segments and the other) have grown
-        # together. But no segment should be longer than 2*w+1, where w is
-        # the window size.
-        newsegs = []
-        for seg in self.segments:
-            if center.start in seg or center.end in seg:
-                nseg = []
-                for a in seg:
-                    if min(
-                            [self.dist(a, e, hlimit, tlimit) for e in
-                             [center.start, center.end]]
-                    ) <= opts.window:
-                        nseg.append(a)
-                newsegs.append(sorted(nseg))
-            else:
-                newsegs.append(seg)
-        self.segments = newsegs
+        # together. Nor does it catch the case, where a segment is within
+        # hlimit & tlimit of the segment containing central bond, but does
+        # not lie within the window.
 
-        newbonds = []
-        atoms = [a for seg in self.segments for a in seg]
-        for bond in self.bonds:
-            if bond.start in atoms and bond.end in atoms:
-                newbonds.append(bond)
-        self.bonds = newbonds
+        atoms = [a for s in self.segments for a in s]
+        froms = [a for a in atoms if self.inwindow(center.start,
+                                                   a, opts.window,
+                                                   hlimit, tlimit)]
+        frome = [a for a in atoms if self.inwindow(center.end,
+                                                   a, opts.window,
+                                                   hlimit, tlimit)]
+        newatoms = sorted(list(set(froms).union(set(frome))))
+        self.segments = [map(itemgetter(1), g)
+                         for k, g
+                         in groupby(enumerate(newatoms), lambda (i, x): i-x)]
+
+        self.correctbonds()
 
         return
 
     def lieswithin(self, seg, center, hlimit, tlimit):
         """
         Check if the segment *seg* lies within *hlimit* & *tlimit* of
-        H-/T-bonds from the central bond *center*
+        H-/T-bonds from the segment containing central bond *center*
         :param seg:
         :param center:
         :param hlimit:
@@ -188,6 +185,63 @@ class Pattern(object):
             return any([self.lieswithin(s[0], center, s[1], s[2])
                         for s in segs])
 
+    def inwindow(self, center, to, window, hlimit=0, tlimit=0, visited=None):
+        """
+        Check whether *to* atom lies inside a window of size *window* centred
+        around *center* atom. 'Path' from the *to* atom to *center* atom may
+        at most traverse *hlimit* H-bonds and *tlimit* T-bonds.
+        :param center: atom index
+        :param to: atom index
+        :param window: int
+        :param hlimit: int
+        :param tlimit: int
+        :param visited: list of atom indicex already visited
+        :return: boolean
+        """
+        if visited is None:
+            visited = []
+
+        if any([hlimit < 0, tlimit < 0, window < 0]):
+            return False
+
+        if center == to:
+            return True
+
+        newstarts = []
+
+        # Collect the atoms connected to start, but not already visited.
+        # Select the unique segment that contains start
+        try:
+            seg, = (s for s in self.segments if center in s)
+        except:
+            print('Error in Pattern.inwindow():')
+            print('{}, {}'.format(self.segments, center))
+            raise
+        idx = seg.index(center)
+        if idx > 0 and seg[idx-1] not in visited:
+            newstarts.append((seg[idx-1], 'B'))
+        if idx < len(seg)-1 and seg[idx+1] not in visited:
+            newstarts.append((seg[idx+1], 'B'))
+
+        bonds = [bond for bond in self.bonds
+                 if bond.start == center or bond.end == center]
+        for bond in bonds:
+            if bond.start == center and bond.end not in visited:
+                newstarts.append((bond.end, bond.type))
+            elif bond.end == center and bond.start not in visited:
+                newstarts.append((bond.start, bond.type))
+
+        if len(newstarts) == 0:
+            return False
+
+        newvis = visited+[center]
+
+        return any([self.inwindow(s[0], to, window-1,
+                                  hlimit - s[1].count('H'),
+                                  tlimit - s[1].count('T'),
+                                  newvis)
+                    for s in newstarts])
+
     def dist(self, start, end, hlimit=None, tlimit=None, visited=None):
         """
         Compute the distance between two atoms in a pattern.
@@ -215,7 +269,14 @@ class Pattern(object):
 
         # Collect the atoms connected to start, but not already visited.
         # Select the unique segment that contains start
-        seg, = (s for s in self.segments if start in s)
+        try:
+            seg, = (s for s in self.segments if start in s)
+        except:
+            print('Error in Pattern.dist({}, {}, {}, {}, {})'.format(
+                start, end, hlimit, tlimit, visited
+            ))
+            print('Trying to find {} in {}.'.format(start, self.segments))
+            raise
         idx = seg.index(start)
         if idx > 0 and seg[idx-1] not in visited[0]:
             newstarts.append((seg[idx-1], 'B'))
@@ -324,4 +385,17 @@ class Pattern(object):
             done += newres
 
         self.residue = done
+        return
+
+    def correctbonds(self):
+        """
+        Remove bonds which do not have both ends in self.segments
+        :return:
+        """
+        newbonds = []
+        atoms = [a for seg in self.segments for a in seg]
+        for bond in self.bonds:
+            if bond.start in atoms and bond.end in atoms:
+                newbonds.append(bond)
+        self.bonds = newbonds
         return

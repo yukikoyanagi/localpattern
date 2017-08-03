@@ -142,4 +142,11 @@ def test_findpattern():
     tbonds = [b for b in pat.bonds if b.type == 'T']
     assert len(tbonds) == 1
 
+    opt = Option.Option(os.path.join(cd, 'data', 'step148_opts'))
+    p = Protein.Protein('test4')
+    hf = os.path.join(cd, 'data', 'tst002.txt')
+    tf = os.path.join(cd, 'data', 'tert002.txt')
+    p.fromfiles(hf, tf)
+    pat = p.findpattern(p.hbonds[0], opt)
+    assert isinstance(pat, Pattern.Pattern)
 

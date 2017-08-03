@@ -136,3 +136,31 @@ def test_Pattern():
     assert hash(p)
     d = {p: range(4)}
     assert d[p] == range(4)
+
+
+def test_inwindow():
+    p = Pattern.Pattern('test')
+    p.segments = [Pattern.Segment(range(i, i+7)) for i in range(0, 31, 10)]
+    assert not p.inwindow(3, 5, 1)
+    assert p.inwindow(3, 5, 2)
+    p.bonds = [Pattern.Bond('H', 4, 14, False, None)]
+    assert not p.inwindow(3, 13, 3)
+    assert p.inwindow(3, 13, 3, hlimit=1)
+    assert not p.inwindow(3, 13, 2, hlimit=1)
+    p.bonds.append(Pattern.Bond('T', 4, 24, False, 1))
+    assert not p.inwindow(3, 26, 4)
+    assert p.inwindow(3, 26, 4, tlimit=1)
+    assert not p.inwindow(3, 26, 4, hlimit=1)
+    p.bonds.append(Pattern.Bond('T', 26, 36, False, 2))
+    assert p.inwindow(3, 35, 6, tlimit=2)
+    assert not p.inwindow(3, 35, 6, hlimit=2, tlimit=0)
+    assert not p.inwindow(3, 35, 10)
+    assert p.inwindow(15, 25, 4, hlimit=1, tlimit=1)
+
+
+def test_correctbonds():
+    p = Pattern.Pattern('test')
+    p.segments = [Pattern.Segment(range(i, i+5)) for i in [0, 10]]
+    p.bonds = [Pattern.Bond('H', i, i+10, False, None) for i in [2, 13]]
+    p.correctbonds()
+    assert len(p.bonds) == 1

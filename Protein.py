@@ -127,22 +127,30 @@ class Protein(object):
         # Remote bonds are the bonds, where only one of the ends is inside
         # the pattern.
         atoms = [a for seg in rpat.segments for a in seg]
+        remotes = []
         for hbnd in self.hbonds:
             b = Pattern.Bond('H', hbnd.donor, hbnd.acceptor,
                              self.istwisted(hbnd.rotation), None)
             if b not in rpat.bonds:
                 if (b.start in atoms
-                    and min([rpat.dist(b.start, center.donor),
-                             rpat.dist(b.start, center.acceptor)]) <
-                        opts.remotes + 1):
-                    rpat.bonds.append(Pattern.Bond(b.type, b.start,
-                                                   -99, b.twisted, b.vdw))
+                    and any([
+                        rpat.inwindow(c, b.start, opts.remotes,
+                                      hlimit=cfg['max_hbond_level'],
+                                      tlimit=cfg['max_tbond_level'])
+                        for c in [center.donor, center.acceptor]
+                            ])):
+                    remotes.append(Pattern.Bond(b.type, b.start,
+                                                -99, b.twisted, b.vdw))
                 elif (b.end in atoms
-                      and min([rpat.dist(b.end, center.donor),
-                               rpat.dist(b.end, center.acceptor)]) <
-                        opts.remotes + 1):
-                    rpat.bonds.append(Pattern.Bond(b.type, -99,
-                                                   b.end, b.twisted, b.vdw))
+                      and any([
+                        rpat.inwindow(c, b.end, opts.remotes,
+                                      hlimit=cfg['max_hbond_level'],
+                                      tlimit=cfg['max_tbond_level'])
+                        for c in [center.donor, center.acceptor]
+                      ])):
+                    remotes.append(Pattern.Bond(b.type, -99,
+                                                b.end, b.twisted, b.vdw))
+        rpat.bonds += remotes
 
         # Apply --nearby-twists parameter. Note nearby-twists takes only
         # three values; -1, 0 and window-size. So if twists > 0, we can
