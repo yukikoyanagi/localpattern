@@ -33,13 +33,11 @@ def filterpat(pats, minn):
     Removes elements from the list which occur less than the given threshold.
     :param pats: List of elements to filter
     :param minn: Min. threshold
-    :return: Filtered list
+    :return: List of (unique) elements, all with occurrence >= minn
     """
     cnt = Counter(pats)
-    for pat in pats[:]:
-        if cnt[pat] < minn:
-            pats.remove(pat)
-    return pats
+
+    return [k for k in cnt.keys() if cnt[k] >= minn]
 
 
 def main():
@@ -64,17 +62,19 @@ def main():
             prot = Protein.Protein(protid)
             prot.fromfiles(f, tertf)
             for bond in prot.hbonds:
-                patrot.append((prot.findpattern(bond, opt), bond.rotation))
+                patrot.append((str(prot.findpattern(bond, opt)),
+                               bond.rotation))
 
-        filtered = filterpat([x[0] for x in patrot], cfg['min_for_cluster'])
+        cnt = Counter([x[0] for x in patrot])
+        filtered = [k for k in cnt.keys() if cnt[k] >= cfg['min_for_cluster']]
 
         rotdict = {}
         for x in patrot:
             if x[0] in filtered:
                 try:
-                    rotdict[str(x[0])].append(x[1])
+                    rotdict[x[0]].append(x[1])
                 except KeyError:
-                    rotdict[str(x[0])] = [x[1]]
+                    rotdict[x[0]] = [x[1]]
 
         with open(outfile, 'wb') as o:
             cPickle.dump(rotdict, o)
