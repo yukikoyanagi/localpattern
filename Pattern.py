@@ -359,6 +359,13 @@ class Pattern(object):
                 bnd.type, locstart, locend, bnd.twisted, bnd.vdw
             ))
 
+        intbnds = [b for b in lpat.bonds if b.start != -99 and b.end != -99]
+        sremotes = [b for b in lpat.bonds if b.start == -99]
+        eremotes = [b for b in lpat.bonds if b.end == -99]
+        lpat.bonds = sorted(intbnds, key=itemgetter(1, 2)) + \
+                     sorted(eremotes, key=itemgetter(1, 4)) + \
+                     sorted(sremotes, key=itemgetter(2, 4))
+
         lpat.residue = self.residue
         lpat.rotation = self.rotation
         return lpat
