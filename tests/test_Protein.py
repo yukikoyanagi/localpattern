@@ -88,7 +88,7 @@ def test_grow():
     assert len(pat.bonds) == 2
 
 
-def test_findpattern():
+def test_findpattern2():
     cd = os.path.dirname(__file__)
     opt = Option.Option(os.path.join(cd, 'data', 'step105_opts'))
     h1 = Protein.Hbond(15, 25, 'ABCD', range(9))
@@ -97,7 +97,7 @@ def test_findpattern():
     prt.hbonds = [h1]
     prt.tbonds = [t1]
     center = Pattern.Bond('H', 15, 25, prt.istwisted(h1.rotation), None)
-    pat = prt.findpattern(h1, opt)
+    pat = prt.findpattern2(h1, opt)
     cbond = Pattern.Bond('H', 3, 103, center.twisted, center.vdw)
     exp = Pattern.Pattern(segments=[range(7),
                                     range(100, 107),
@@ -114,7 +114,7 @@ def test_findpattern():
     prt2 = Protein.Protein('test2')
     prt2.hbonds = [h2]
     prt2.tbonds = [t2]
-    pat2 = prt2.findpattern(h2, opt)
+    pat2 = prt2.findpattern2(h2, opt)
     assert pat == pat2
 
     opt = Option.Option(os.path.join(cd, 'data', 'step106_opts'))
@@ -122,7 +122,7 @@ def test_findpattern():
     t1 = Protein.Tbond(23, 33, 'ABCD', range(0, -9, -1), 3.1)
     prt.hbonds = [h1]
     prt.tbonds = [t1]
-    pat = prt.findpattern(h1, opt)
+    pat = prt.findpattern2(h1, opt)
     exp = Pattern.Pattern(segments=[range(15),
                                     range(100, 124)],
                           bonds=[Pattern.Bond('H', 7, 116, False, None),
@@ -137,7 +137,7 @@ def test_findpattern():
     tf = os.path.join(cd, 'data', 'tert001.txt')
     p.fromfiles(hf, tf)
     hbnd = p.hbonds[-2]
-    pat = p.findpattern(hbnd, opt)
+    pat = p.findpattern2(hbnd, opt)
     assert len(pat.bonds) == 4
     tbonds = [b for b in pat.bonds if b.type == 'T']
     assert len(tbonds) == 1
@@ -147,6 +147,72 @@ def test_findpattern():
     hf = os.path.join(cd, 'data', 'tst002.txt')
     tf = os.path.join(cd, 'data', 'tert002.txt')
     p.fromfiles(hf, tf)
-    pat = p.findpattern(p.hbonds[0], opt)
+    pat = p.findpattern2(p.hbonds[0], opt)
     assert isinstance(pat, Pattern.Pattern)
+
+    # opts = [Option.Option(os.path.join(cd, 'data', 'step{}_opts'.format(t)))
+    #         for t in [105, 106, 148]]
+    # for opt in opts:
+    #     for s in range(0, len(p.hbonds)+1, 20):
+    #         c = p.hbonds[s]
+    #         pat1 = p.findpattern(c, opt)
+    #         pat2 = p.findpattern2(c, opt)
+    #         print('opt: {}'.format(opt))
+    #         print('findpattern: {}'.format(pat1))
+    #         print('findpattern2: {}'.format(pat2))
+    #         assert pat1 == pat2
+
+
+def test_getogtbonds():
+    p = Protein.Protein('testprot')
+    p.hbonds = [Protein.Hbond(3, 13, 'ABCD', range(4)),
+                Protein.Hbond(24, 34, 'ABCD', range(4))]
+    p.tbonds = [Protein.Tbond(11, 21, 'ABCD', range(9), 0.12),
+                Protein.Tbond(14, 35, 'ABCD', range(9), 0.12)]
+    pat = Pattern.Pattern('testpat')
+    pat.segments = [Pattern.Segment(range(i, i+7)) for i in range(0, 21, 10)]
+    pat.bonds = [Pattern.Bond('H', 3, 13, False, None),
+                 Pattern.Bond('T', 11, 21, False, 0.12)]
+    l = p.getogtbonds(pat)
+    assert len(l) == 1
+    assert l[0] == (Pattern.Bond('T', 14, 35, False, 0.13), 14, 35)
+
+
+def test_addt():
+    def startpat():
+        sp = Pattern.Pattern('pat')
+        sp.segments = [Pattern.Segment(range(10))]
+        return sp
+
+    p = Protein.Protein('test')
+    r = 'ABCD'
+    t = range(9)
+    v = 0.12
+    p.tbonds = [Protein.Tbond(3, 13, r, t, v),
+                Protein.Tbond(12, 24, r, t, v),
+                Protein.Tbond(14, 34, r, t, v),
+                Protein.Tbond(15, 35, r, t, v),
+                Protein.Tbond(33, 45, r, t, v)]
+    pat = startpat()
+    b = Pattern.Bond('T', 3, 13, False, v)
+    newpat = p.addt(pat, b, 13, 0, 0)
+    assert newpat.segments == [range(10), [13]]
+
+    pat = startpat()
+    newpat = p.addt(pat, b, 13, 1, 1)
+    assert newpat.segments == [range(10), range(12, 15)]
+    assert len(newpat.bonds) == 1
+
+    pat = startpat()
+    newpat = p.addt(pat, b, 13, 2, 1)
+    assert newpat.segments == [range(10), range(11, 16), [24], [34]]
+    assert len(newpat.bonds) == 3
+
+    pat = startpat()
+    newpat = p.addt(pat, b, 13, 7, 2)
+    atoms = set([a for seg in newpat.segments for a in seg])
+    assert atoms == set(range(40) + range(42, 49))
+    assert len(set(newpat.bonds)) == 5
+
+
 

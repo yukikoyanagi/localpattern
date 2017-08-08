@@ -84,6 +84,113 @@ class Protein(object):
                 vdw = float(cols[cfg['tbond']['vdw_col']])
                 self.tbonds.append(Tbond(lidx, ridx, res, rot, vdw))
 
+    def findpattern2(self, center, opts):
+        cd = center.donor
+        ca = center.acceptor
+        tw = self.istwisted(center.rotation)
+        cbond = Pattern.Bond('H', cd, ca, tw, None)
+        dseg = range(cd-opts.window, cd+opts.window+1)
+        aseg = range(ca-opts.window, ca+opts.window+1)
+        rpat = Pattern.Pattern(segments=[dseg, aseg],
+                               bonds=[cbond],
+                               residue=center.residue,
+                               rotation=center.rotation)
+        rpat.handleresidue(opts.residue)
+        hmax = cfg['max_hbond_level']
+        tmax = cfg['max_tbond_level']
+
+        if tmax > 0:
+            for b, inend, otherend in self.getogtbonds(rpat):
+                self.addt(rpat, b, otherend,
+                          opts.window - min(map(abs, [inend-cd, inend-ca]))-1,
+                          tmax - 1)
+
+        # Now we need to clean up rpat
+        # First we remove duplicates
+        atoms = sorted(set([atom for seg in rpat.segments for atom in seg]))
+        # then we split the sequence whenever there is a gap.
+        # Technically the adjacent atoms may not be connected to each other
+        # in a pattern; if atom a and b lie adjacent to each other, but both
+        #  are window_size away from the central bond, then they should not
+        # be connected. But in practice this is not a problem, since two
+        # patterns with the same opts parameters cannot differ by this
+        # 'missing' edge.
+        rpat.segments = [map(itemgetter(1), g)
+                         for k, g
+                         in groupby(enumerate(atoms), lambda (i, x): i-x)]
+
+        # Add the bonds internal to the pattern
+        tbs2add = [b for b in self.tbonds
+                   if (b.left in atoms) and (b.right in atoms)]
+        for b in tbs2add:
+            rpat.bonds.append(Pattern.Bond('T', b.left, b.right,
+                                           self.istwisted(b.rotation), b.vdw))
+        hbs2add = [b for b in self.hbonds
+                   if (b.donor in atoms) and (b.acceptor in atoms)]
+        for b in hbs2add:
+            rpat.bonds.append(Pattern.Bond('H', b.donor, b.acceptor,
+                                           self.istwisted(b.rotation), None))
+        # ... and de-duplicate and sort
+        ubonds = set(rpat.bonds)
+        rpat.bonds = sorted(ubonds, key=itemgetter(1))
+
+        # Apply --nearby-remotes parameter. We only apply this to hbonds.
+        # Remote bonds are the bonds, where only one of the ends is inside
+        # the pattern.
+        remotes = []
+        for hbnd in self.hbonds:
+            b = Pattern.Bond('H', hbnd.donor, hbnd.acceptor,
+                             self.istwisted(hbnd.rotation), None)
+            if b not in rpat.bonds:
+                if (b.start in atoms
+                    and any([
+                        rpat.inwindow(c, b.start, opts.remotes,
+                                      hlimit=cfg['max_hbond_level'],
+                                      tlimit=cfg['max_tbond_level'])
+                        for c in [center.donor, center.acceptor]
+                            ])):
+                    remotes.append(Pattern.Bond(b.type, b.start,
+                                                -99, b.twisted, b.vdw))
+                elif (b.end in atoms
+                      and any([
+                        rpat.inwindow(c, b.end, opts.remotes,
+                                      hlimit=cfg['max_hbond_level'],
+                                      tlimit=cfg['max_tbond_level'])
+                        for c in [center.donor, center.acceptor]
+                      ])):
+                    remotes.append(Pattern.Bond(b.type, -99,
+                                                b.end, b.twisted, b.vdw))
+        rpat.bonds += remotes
+
+        # Apply --nearby-twists parameter. Note nearby-twists takes only
+        # three values; -1, 0 and window-size. So if twists > 0, we can
+        # include twist information on all bonds.
+        if opts.twists <= 0:
+            newbonds = []
+            for bond in rpat.bonds:
+                if (bond.start == center.donor and
+                        bond.end == center.acceptor and
+                        opts.twists == 0):
+                    newbonds.append(bond)
+                else:
+                    newbonds.append(Pattern.Bond(bond.type, bond.start,
+                                                 bond.end, False, bond.vdw))
+            rpat.bonds = newbonds
+
+        # We need to replace atom index by the local index, i.e.
+        # 0, 1, 2,... for the donor-segment for the central bond
+        # 100, 101, ... for the acceptor-segment for the central bond
+        # 200, 201, ... for the segment connected to the '0' segment at the
+        # smallest index
+        # ...and so on
+        cbond = Pattern.Bond('H', center.donor, center.acceptor,
+                             self.istwisted(center.rotation), None)
+        lpat = rpat.localise(cbond)
+
+        return lpat
+
+
+
     def findpattern(self, center, opts):
         """
         Return a Pattern object around *center* Hbond using *opts*.
@@ -277,3 +384,47 @@ class Protein(object):
 
         return pat
 
+    def getogtbonds(self, pat):
+        """
+        Return a list of 'outgoing' tbonds in *pat*. 'Outgoing' tbonds are
+        the tbonds which have only one of the ends in the pattern.
+        :return: List of tuple containing;
+         bond: Pattern.Bond instance for an outgoing tbond
+         inend: int; index of the end which is in the pattern
+         otherend: int; index of the end outside the pattern
+        """
+        atoms = [a for seg in pat.segments for a in seg]
+        results = []
+        for tb in self.tbonds:
+            if (tb.left in atoms) is not (tb.right in atoms):  # XOR
+                bnd = Pattern.Bond('T', tb.left, tb.right,
+                                   self.istwisted(tb.rotation), tb.vdw)
+                # i is the end inside the pattern, since True evaluates to 1
+                # and False to 0
+                i = tb.left * (tb.left in atoms) +\
+                    tb.right * (tb.right in atoms)
+                o = tb.left + tb.right - i
+                results.append((bnd, i, o))
+        return results
+
+    def addt(self, pat, bond, c, win, tlevel):
+        """
+        'Grow' *pat* by adding T-section(s) to it. T-section is a pairing of
+        *bond* and a segment on the other side of the *bond*. *win* and
+        *tlevel* provide constraints.
+        :param pat: Pattern.Pattern object to be grown
+        :param bond: Pattern.Bond instance; outgoing t-bond
+        :param c: ind; the other end of *bond*
+        :param win: int; Remaining window size after adding the bond
+        :param tlevel: int; Remaining max_tbond_level after adding the bond
+        :return: expanded Pattern.Pattern instance
+        """
+        if win >= 0:
+            pat.bonds.append(bond)
+            newseg = Pattern.Segment(range(c-win, c+win+1))
+            pat.segments.append(newseg)
+        if tlevel > 0 and win > 0:
+            for b, i, o in self.getogtbonds(pat):
+                if i in newseg:
+                    self.addt(pat, b, o, win-abs(i-c)-1, tlevel-1)
+        return pat

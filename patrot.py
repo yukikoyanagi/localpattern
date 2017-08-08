@@ -62,7 +62,7 @@ def main():
             prot = Protein.Protein(protid)
             prot.fromfiles(f, tertf)
             for bond in prot.hbonds:
-                patrot.append((str(prot.findpattern(bond, opt)),
+                patrot.append((str(prot.findpattern2(bond, opt)),
                                bond.rotation))
 
         cnt = Counter([x[0] for x in patrot])
