@@ -20,10 +20,19 @@ import Option
 def getsteps(p):
     """Compute a list of steps to process on this core."""
     if p['abacus']:
-        n = int(os.environ['SLURM_JOB_NUM_NODES'])
-        return range(int(os.environ['SLURM_PROCID']),
-                     p['max_step'] + 1,
-                     p['cpu_per_node'] * n)
+        # n = int(os.environ['SLURM_JOB_NUM_NODES'])
+        # return range(int(os.environ['SLURM_PROCID']),
+        #              p['max_step'] + 1,
+        #              p['cpu_per_node'] * n)
+        fs = glob('/work/austmathjea/cdp/step*/rotations.pkl')
+        e = [int(os.path.basename(os.path.dirname(f)).lstrip('step'))
+             for f in fs]
+        s = [i for i in range(792) if i not in e]
+        try:
+            l = [s[int(os.environ['SLURM_PROCID'])]]
+        except IndexError:
+            l = []
+        return l
     else:
         return range(p['max_step'] + 1)
 
