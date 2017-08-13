@@ -8,6 +8,7 @@
 # ParallelPython. Output is written to a python pickle file.
 
 import os
+import gc
 import cPickle as pickle
 from glob import glob
 from itertools import groupby
@@ -44,11 +45,12 @@ def findpatterns(step, cfg, data):
         prot = Protein.Protein(protid)
         prot.fromfiles(f, tertf)
         for bond in prot.hbonds:
-            try:
-                patrot[str(prot.findpattern2(bond, opt))].append(
-                    bond.rotation)
-            except KeyError:
-                patrot[str(prot.findpattern2(bond, opt))] = [bond.rotation]
+            pat = str(prot.findpattern2(bond, opt))
+            if pat in patrot:
+                patrot[pat].append(tuple(bond.rotation))
+            else:
+                patrot[pat] = [tuple(bond.rotation)]
+        del prot
 
     return patrot
 
@@ -57,7 +59,7 @@ def main():
     steps = range(cfg['max_step'] + 1)
     fs = glob(cfg['protdir'] + '/*.txt')
     subsets = []
-    for k, g in groupby(enumerate(fs), key=lambda x: x[0] / 200):
+    for k, g in groupby(enumerate(fs), key=lambda x: x[0] / 100):
         subsets.append([f[1] for f in g])
 
     jobs = []
@@ -87,7 +89,11 @@ def main():
         results = {}
         for job in [task for task in jobs if task.group == step]:
             d = job()
-            results.update(d)
+            for k in d:
+                if k in results:
+                    results[k] += d[k]
+                else:
+                    results[k] = d[k]
 
         outfile = os.path.join(cfg['outdir'], 'step{}'.format(step),
                                'rotations.pkl')
