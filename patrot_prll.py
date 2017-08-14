@@ -8,8 +8,8 @@
 # ParallelPython. Output is written to a python pickle file.
 
 import os
-import gc
-import cPickle as pickle
+import cPickle
+import uuid
 from glob import glob
 from itertools import groupby
 
@@ -33,6 +33,7 @@ def findpatterns(step, cfg, data):
     :param data: list of prot file names to process.
     :return: dict of {pattern: list of rotations}
     """
+    sdir = os.environ['SCRATCH']
     of = os.path.join(cfg['optsdir'], 'step{}_opts'.format(step))
     opt = Option.Option(of)
     patrot = {}
@@ -52,7 +53,10 @@ def findpatterns(step, cfg, data):
                 patrot[pat] = [tuple(bond.rotation)]
         del prot
 
-    return patrot
+    outfile = os.path.join(sdir,
+                           'step{}_{}.pkl'.format(step, uuid.uuid4().hex))
+    with open(outfile, 'wb') as o:
+        cPickle.dump(patrot, o, -1)
 
 
 def main():
@@ -76,7 +80,8 @@ def main():
             job = job_server.submit(findpatterns,
                                     (step, cfg, subset),
                                     (),
-                                    ("os", "Protein", "Option"),
+                                    ("os", "uuid", "cPickle",
+                                     "Protein", "Option"),
                                     None,
                                     (),
                                     step)
@@ -87,8 +92,11 @@ def main():
     for step in submitted:
         job_server.wait(step)
         results = {}
-        for job in [task for task in jobs if task.group == step]:
-            d = job()
+        outfs = glob(os.path.join(os.environ['SCRATCH'],
+                                  'step{}_*.pkl'.format(step)))
+        for outf in outfs:
+            with open(outf, 'rb') as fh:
+                d = cPickle.load(fh)
             for k in d:
                 if k in results:
                     results[k] += d[k]
@@ -98,7 +106,7 @@ def main():
         outfile = os.path.join(cfg['outdir'], 'step{}'.format(step),
                                'rotations.pkl')
         with open(outfile, 'wb') as o:
-            pickle.dump(results, o)
+            cPickle.dump(results, o)
 
 
 if __name__ == '__main__':

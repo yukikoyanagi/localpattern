@@ -62,14 +62,15 @@ def main():
             prot = Protein.Protein(protid)
             prot.fromfiles(f, tertf)
             for bond in prot.hbonds:
-                try:
-                    patrot[str(prot.findpattern2(bond, opt))].append(
-                        bond.rotation)
-                except KeyError:
-                    patrot[str(prot.findpattern2(bond, opt))] = [bond.rotation]
+                pat = str(prot.findpattern2(bond, opt))
+                if pat in patrot:
+                    patrot[pat].append(tuple(bond.rotation))
+                else:
+                    patrot[pat] = [tuple(bond.rotation)]
+            del prot
 
         with open(outfile, 'wb') as o:
-            cPickle.dump(patrot, o)
+            cPickle.dump(patrot, o, protocol=-1)
 
 
 if __name__ == '__main__':
