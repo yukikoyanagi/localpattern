@@ -108,6 +108,10 @@ def main():
         with open(outfile, 'wb') as o:
             cPickle.dump(results, o)
 
+        # Clean up temp files
+        for outf in outfs:
+            os.remove(outf)
+
 
 if __name__ == '__main__':
     main()
