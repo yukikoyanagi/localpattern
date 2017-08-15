@@ -31,8 +31,10 @@ import subprocess
 import pp
 from itertools import islice, tee
 
-minn = 30
-maxstep = 791
+from config import cfg
+
+minn = cfg['min_for_cluster']
+maxstep = cfg['max_step']
 
 # Set up servers
 ppservers = open('/tmp/nodelist').read().strip().split()
@@ -57,7 +59,7 @@ def filtersingles(data, outdir):
     return data
 
 
-def chunk(data, n=24*16):
+def chunk(data, n=24):
     '''Splits input data (dict) into n equal chunks.'''
     it = iter(data)
     for i, iterator in enumerate(tee(it, n)):

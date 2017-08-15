@@ -63,7 +63,7 @@ def main():
     steps = range(cfg['max_step'] + 1)
     fs = glob(cfg['protdir'] + '/*.txt')
     subsets = []
-    for k, g in groupby(enumerate(fs), key=lambda x: x[0] / 100):
+    for k, g in groupby(enumerate(fs), key=lambda x: x[0] / 500):
         subsets.append([f[1] for f in g])
 
     jobs = []
