@@ -31,8 +31,7 @@ srun ppserver.py -p 2048 -t 30 &
 sleep 1 # sleep a bit to ensure that the servers have started
 
 echo Starting Python program
-python pred_prll.py /work/austmathjea/cdp/n30assess \
-       /work/austmathjea/cdp/test \
+python pred_prll.py /work/austmathjea/cdp/test \
        791 ./prediction.txt
 
 end=$(date +%s)

@@ -393,16 +393,16 @@ sub process_summary {
     my $summary = shift;
     my $fn = $summary->{fn};
     my $base = basename($fn);
-    $base =~ m/(.*)_Summary2?\.txt/
+    $base =~ m/(.*)(_[A-Z]{4})_Summary2?\.txt/
 	or die "unexpected base filename $base";
     my $pattern = $1;
-    my $length = $2;
-    my $res = $3;
+    my $length = $3;
+    my $res = $2;
     my $ok_func = ($length eq 'L') ? \&L_cluster_ok : \&cluster_ok;
     my $total = $summary->{total_obs};
     my $ncluster = scalar @{$summary->{clusters}};
     c("Processing %s", $fn);
-    c("pattern %s, length %s", $pattern, $length);
+    c("pattern %s%s", $pattern, $res);
     c("total observations: %d", $total);
     c("#clusters: %d", $ncluster);
     c("\tid\t#obs\tpeakness\tmp-ratio\tmode");
@@ -499,8 +499,8 @@ sub process_summary {
     $count{"${whitelist}${reason}"}++;
 
     my $primary = $summary->{clusters}[0];
-    p("%s\t%s\t%d,%d,%d\t%.2f;%.2f,%.2f,%.2f\t%.4f" . ("\t%.2f"x6),
-      "${pattern}_${length}${res}", $length,
+    p("%s\t%d,%d,%d\t%.2f;%.2f,%.2f,%.2f\t%.4f" . ("\t%.2f"x6),
+      "${pattern}${res}",
       $primary->{bx}, $primary->{by}, $primary->{bz},
       unrotated_center($primary->{bx}, $primary->{by}, $primary->{bz}),
       $quality,

@@ -24,6 +24,9 @@ import Option
 from config import cfg
 
 
+# Use the following pattern to construct a list of assess files
+afpattern = '/work/austmathjea/cdp/step*/n30/step*_assess'
+
 # Set up servers
 ppservers = open('/tmp/nodelist').read().strip().split()
 if len(ppservers) > 1:
@@ -52,7 +55,7 @@ def parseassess(line):
     ev: 4-list of rotation vector; angle, x, y, z
     score: score
     '''
-    pat, _, m, e, s, _, _, _, _, _, _ = line.split()
+    pat, m, e, s, _, _, _, _, _, _ = line.split()
     mode = map(int, m.split(','))
     n = float(e.split(';')[0])
     v = map(float, e.split(';')[1].split(','))
@@ -127,12 +130,15 @@ def listofbonds(pdir):
     return res
 
 
-def main(adir, pdir, mstep, outf):
+def main(pdir, mstep, outf):
     # Find local pattern around each bond in each test protein for each opts
     # files, and get the results together with the matching line
     # from the corresponding _assess file.
-    for step in range(mstep, -1, -1):
-        af = os.path.join(adir, 'step{}_assess'.format(step))
+    afs = glob.glob(afpattern)
+    for af in afs:
+        step = int(os.path.basename(af).split('_')[0].lstrip('step'))
+        if step > mstep:
+            continue
         opt = Option.Option(os.path.join(cfg['optsdir'],
                                          'step{}_opts'.format(step)))
         job_server.submit(runstep,
@@ -235,8 +241,6 @@ def main(adir, pdir, mstep, outf):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('assessdir', help='Directory containing '
-                        '_assess files')
     parser.add_argument('protdir', help='Directory containing '
                         'test protein files')
     parser.add_argument('maxstep', type=int,
@@ -244,4 +248,4 @@ if __name__ == '__main__':
                         'to consider when making predictions.')
     parser.add_argument('outfile', help='Output file')
     args = parser.parse_args()
-    main(args.assessdir, args.protdir, args.maxstep, args.outfile)
+    main(args.protdir, args.maxstep, args.outfile)
