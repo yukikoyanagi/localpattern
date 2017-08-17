@@ -69,11 +69,8 @@ def main():
     steps = range(cfg['max_step'] + 1)
     fs = glob(cfg['protdir'] + '/*.txt')
     subsets = []
-    for k, g in groupby(enumerate(fs), key=lambda x: x[0] / 500):
+    for k, g in groupby(enumerate(fs), key=lambda x: x[0] / 2000):
         subsets.append([f[1] for f in g])
-
-    jobs = []
-    submitted = []
 
     for step in steps:
         outfile = os.path.join(cfg['outdir'], 'step{}'.format(step),
@@ -83,16 +80,12 @@ def main():
             continue
 
         for subset in subsets:
-            job = job_server.submit(findpatterns,
-                                    args=(step, subset),
-                                    group=step)
+            job_server.submit(findpatterns,
+                              args=(step, subset),
+                              group='step{}'.format(step))
 
-            jobs.append(job)
-
-        submitted.append(step)
-
-    for step in submitted:
-        job_server.wait(step)
+    for step in steps:
+        job_server.wait('step{}'.format(step))
         results = {}
         outfs = glob(os.path.join(os.environ['SCRATCH'],
                                   'step{}_*.pkl'.format(step)))

@@ -6,12 +6,11 @@
 #
 # Description: Predict H-bond rotations. This is *almost* a clone of
 # cdp.predict. Uses parallelpython (http://www.parallelpython.com).
-# Requires: conv.py, find_local_patterns.py.
+# Requires: conv.py, Protein.py, Option.py, config.py.
 #
 
 import argparse
 import os
-# import shutil
 import glob
 import subprocess
 import math
@@ -19,13 +18,13 @@ import cPickle
 import pp
 
 import conv
-# import Protein
-# import Option
-# from config import cfg
+from config import cfg
 
 
 # Use the following pattern to construct a list of assess files
-afpattern = '/work/austmathjea/cdp/step*/n30/step*_assess'
+afpattern = '/work/austmathjea/cdp/step*/n{}/step*_assess'.format(
+    cfg['min_for_cluster']
+)
 
 # Set up servers
 ppservers = open('/tmp/nodelist').read().strip().split()
@@ -132,14 +131,15 @@ def main(pdir, mstep, outf):
         if step > mstep:
             continue
         job_server.submit(runstep,
-                          args=(step, pdir, af))
+                          args=(step, pdir, af),
+                          group='step{}'.format(step))
 
     remaining = listofbonds(pdir)
 
-    job_server.wait()
     filestodel = []
     preds = {}
     for step in range(mstep, -1, -1):
+        job_server.wait('step{}'.format(step))
         resf = os.path.join(os.environ['SCRATCH'],
                             'step{}_score.pkl'.format(step))
         with open(resf, 'rb') as fh:
