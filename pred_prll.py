@@ -11,7 +11,7 @@
 
 import argparse
 import os
-import shutil
+# import shutil
 import glob
 import subprocess
 import math
@@ -19,9 +19,9 @@ import cPickle
 import pp
 
 import conv
-import Protein
-import Option
-from config import cfg
+# import Protein
+# import Option
+# from config import cfg
 
 
 # Use the following pattern to construct a list of assess files
@@ -36,35 +36,7 @@ else:
     job_server = pp.Server()
 
 
-def parseflp(line):
-    '''
-    Parse line from flp.txt file. Returns 2-tuple of (protein, lineno)
-    and pattern.
-    '''
-    prot, lno, _, _, _, l, pat, res = line.split()
-    bond = (prot, int(lno))
-    pattern = '{p}_{l}_{r}'.format(p=pat, l=l, r=res)
-    return bond, pattern
-
-
-def parseassess(line):
-    '''
-    Parse (machine-readable) line from assess file. Returns 2-tuple
-    of pattern, data. Data contains:
-    mode: 3-list of mode box id's
-    ev: 4-list of rotation vector; angle, x, y, z
-    score: score
-    '''
-    pat, m, e, s, _, _, _, _, _, _ = line.split()
-    mode = map(int, m.split(','))
-    n = float(e.split(';')[0])
-    v = map(float, e.split(';')[1].split(','))
-    ev = [n] + v
-    score = float(s)
-    return pat, (mode, ev, score)
-
-
-def runstep(step, opt, pdir, tdir, af):
+def runstep(step, pdir, af):
     '''
     Runs predictions for the given step. Returns a dict of
     {(protein, lineno): value}, value is a tuple containing
@@ -73,6 +45,14 @@ def runstep(step, opt, pdir, tdir, af):
     ev: 4-tuple of rotation vector; angle, x, y, z
     score: score
     '''
+    import os
+    import shutil
+    import cPickle
+    import glob
+    import Protein
+    import Option
+    from config import cfg
+
     # SLURM-specific environment var's
     try:
         os.environ['LOCALSCRATCH']
@@ -88,12 +68,14 @@ def runstep(step, opt, pdir, tdir, af):
     lpdir = os.path.join(stepdir, 'prot')
     shutil.copytree(pdir, lpdir)
     pfiles = glob.glob('{}/*.txt'.format(lpdir))
+    opt = Option.Option(os.path.join(cfg['optsdir'],
+                                     'step{}_opts'.format(step)))
 
     # Build dict of {(protid, lineno): pattern}
     bonds = {}
     for pfile in pfiles:
         pid = os.path.splitext(os.path.basename(pfile))[0]
-        tfile = os.path.join(tdir, '{}.txt'.format(pid))
+        tfile = os.path.join(cfg['tertdir'], '{}.txt'.format(pid))
         if not os.path.exists(tfile):
             tfile = None
         prot = Protein.Protein(pid)
@@ -108,8 +90,13 @@ def runstep(step, opt, pdir, tdir, af):
              if (not l.startswith('#')) and (len(l.strip()) > 0)]
     scores = {}
     for line in lines:
-        pat, data = parseassess(line)
-        scores[pat] = data
+        pat, m, e, s, _, _, _, _, _, _ = line.split()
+        mode = map(int, m.split(','))
+        n = float(e.split(';')[0])
+        v = map(float, e.split(';')[1].split(','))
+        ev = [n] + v
+        score = float(s)
+        scores[pat] = (mode, ev, score)
 
     res = {}
     for bond in bonds:
@@ -139,13 +126,8 @@ def main(pdir, mstep, outf):
         step = int(os.path.basename(af).split('_')[0].lstrip('step'))
         if step > mstep:
             continue
-        opt = Option.Option(os.path.join(cfg['optsdir'],
-                                         'step{}_opts'.format(step)))
         job_server.submit(runstep,
-                          (step, opt, pdir, cfg['tertdir'], af),
-                          (parseassess,),
-                          ('os', 'shutil', 'glob', 'cPickle',
-                           'Option', 'Protein'))
+                          args=(step, pdir, af))
 
     remaining = listofbonds(pdir)
 
