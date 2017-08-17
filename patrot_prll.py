@@ -25,14 +25,20 @@ ppservers = tuple(pp + ':2048' for pp in ppservers)
 job_server = pp.Server(0, ppservers=ppservers)
 
 
-def findpatterns(step, cfg, data):
+def findpatterns(step, data):
     """
     Find local patterns for the given step & data.
     :param step: int; step number
-    :param cfg: config.cfg object
     :param data: list of prot file names to process.
     :return: dict of {pattern: list of rotations}
     """
+    import os
+    import uuid
+    import cPickle
+    import Protein
+    import Option
+    from config import cfg
+
     sdir = os.environ['SCRATCH']
     of = os.path.join(cfg['optsdir'], 'step{}_opts'.format(step))
     opt = Option.Option(of)
@@ -78,13 +84,9 @@ def main():
 
         for subset in subsets:
             job = job_server.submit(findpatterns,
-                                    (step, cfg, subset),
-                                    (),
-                                    ("os", "uuid", "cPickle",
-                                     "Protein", "Option"),
-                                    None,
-                                    (),
-                                    step)
+                                    args=(step, subset),
+                                    group=step)
+
             jobs.append(job)
 
         submitted.append(step)
