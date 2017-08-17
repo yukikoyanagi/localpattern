@@ -2,6 +2,7 @@
 # Pattern format configuration:
 # The shortest path from any given atom in the pattern to the central bond
 # can at most contain *max_tbond_level* tbond
+# Set to -1 to ignore tbonds. (0 will include internal tbonds)
 max_tbond_level: 1
 # The shortest path from any given atom in the pattern to the central bond
 # can at most contain *max_hbond_level* hbond, including the central bond.

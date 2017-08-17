@@ -46,7 +46,7 @@ def findpatterns(step, data):
     for f in data:
         protid = os.path.splitext(os.path.basename(f))[0]
         tertf = os.path.join(cfg['tertdir'], protid + '.txt')
-        if not os.path.exists(tertf):
+        if (not os.path.exists(tertf)) or (cfg['max_tbond_level'] == -1):
             # Corresponding tertiary file may not be present...
             tertf = None
         prot = Protein.Protein(protid)
@@ -108,7 +108,7 @@ def main():
         outfile = os.path.join(cfg['outdir'], 'step{}'.format(step),
                                'rotations.pkl')
         with open(outfile, 'wb') as o:
-            cPickle.dump(results, o)
+            cPickle.dump(results, o, -1)
 
         # Clean up temp files
         for outf in outfs:

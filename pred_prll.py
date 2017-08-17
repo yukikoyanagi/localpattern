@@ -124,6 +124,11 @@ def main(pdir, mstep, outf):
     afs = glob.glob(afpattern)
     for af in afs:
         step = int(os.path.basename(af).split('_')[0].lstrip('step'))
+        if os.path.exists(
+                os.path.join(
+                    os.environ['SCRATCH'], 'step{}_score.pkl'.format(step))):
+            print('step{}_score file exists. Skipping.'.format(step))
+            continue
         if step > mstep:
             continue
         job_server.submit(runstep,
@@ -139,6 +144,8 @@ def main(pdir, mstep, outf):
                             'step{}_score.pkl'.format(step))
         with open(resf, 'rb') as fh:
             res = cPickle.load(fh)
+        with open(resf + '.read', 'w') as w:
+            w.write('read.')
         newrem = []
         for bond in remaining:
             try:
@@ -174,6 +181,9 @@ def main(pdir, mstep, outf):
         remaining = newrem
 
         filestodel.append(resf)
+
+        with open(resf + '.done', 'w') as w:
+            w.write('processed.')
 
     # Now we have a dict of predictions. Compute the diff between
     # the predicted and actual rotations, and write the results.
@@ -219,6 +229,8 @@ def main(pdir, mstep, outf):
     # All done, remove temp files.
     for ftodel in filestodel:
         os.remove(ftodel)
+        os.remove(ftodel + '.done')
+        os.remove(ftodel + '.read')
 
 
 if __name__ == '__main__':
