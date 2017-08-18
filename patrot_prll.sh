@@ -3,6 +3,7 @@
 #SBATCH --account austmathjea_slim
 #SBATCH --nodes 32                 # number of nodes
 #SBATCH --time 6:00:00            # max time (HH:MM:SS)
+#SBATCH --mail-type=FAIL,END
 #
 # File: patrot_prll.sh
 #
@@ -18,6 +19,9 @@ echo Available nodes: "$SLURM_NODELIST"
 echo Slurm_submit_dir: "$SLURM_SUBMIT_DIR"
 echo Start time: "$(date)"
 start=$(date +%s)
+
+echo Clearing scratch folder
+rm -f ${SCRATCH}/*
 
 echo Writing hostnames
 scontrol show hostnames $SLURM_NODELIST > /tmp/nodelist

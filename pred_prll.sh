@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 #
 #SBATCH --account austmathjea_slim
-#SBATCH --nodes 3                 # number of nodes
-#SBATCH --time 2:00:00            # max time (HH:MM:SS)
+#SBATCH --nodes 32               # number of nodes
+#SBATCH --time 6:00:00            # max time (HH:MM:SS)
+#SBATCH --mail-type END,FAIL
 #
 # File: pred_prll.sh
 #
@@ -18,6 +19,9 @@ echo Available nodes: "$SLURM_NODELIST"
 echo Slurm_submit_dir: "$SLURM_SUBMIT_DIR"
 echo Start time: "$(date)"
 start=$(date +%s)
+
+echo Clearing SCRATCH folder
+rm -f ${SCRATCH}/*
 
 echo Writing hostnames
 scontrol show hostnames $SLURM_NODELIST > /tmp/nodelist

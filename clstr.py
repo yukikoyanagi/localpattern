@@ -77,6 +77,9 @@ def runclstrs(data, step):
 
 
 def runclstr(pattern, data, step):
+    import os
+    import subprocess
+
     # Files and dirs
     rscript = os.path.join(os.path.expandvars('$SLURM_SUBMIT_DIR'),
                            'Rasmus2.r')
@@ -155,12 +158,9 @@ for step in steps:
     # Submit jobs for subset of data to avoid too many threads
     for subset in chunk(rots):
         clstr = job_server.submit(runclstrs,
-                                  (subset, step),
-                                  (runclstr,),
-                                  ('os', 'subprocess'),
-                                  None,
-                                  (),
-                                  'step{}'.format(step))
+                                  args=(subset, step),
+                                  depfuncs=(runclstr,),
+                                  group='step{}'.format(step))
         clsts.append(clstr)
     submitted.append(step)
 

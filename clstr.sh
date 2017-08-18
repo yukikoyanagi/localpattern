@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 #
 #SBATCH --account austmathjea_slim
-#SBATCH --nodes 16                 # number of nodes
-#SBATCH --time 4:00:00            # max time (HH:MM:SS)
+#SBATCH --nodes 32                 # number of nodes
+#SBATCH --time 6:00:00            # max time (HH:MM:SS)
+#SBATCH --mail-type=END,FAIL
 #
 # Time-stamp: <2017-02-24 10:26:27 au447708>
 #
-# File: clstrab.sh
+# File: clstr.sh
 #
 # Description: This is the job script submitted by sbatch for
 #  clustering analysis. We estimate 16 nodes take ca. 10min to run
