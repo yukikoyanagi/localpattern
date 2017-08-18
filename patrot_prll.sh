@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
 #SBATCH --account austmathjea_slim
-#SBATCH --nodes 16                 # number of nodes
-#SBATCH --time 4:00:00            # max time (HH:MM:SS)
+#SBATCH --nodes 32                 # number of nodes
+#SBATCH --time 6:00:00            # max time (HH:MM:SS)
 #
 # File: patrot_prll.sh
 #
@@ -24,7 +24,7 @@ scontrol show hostnames $SLURM_NODELIST > /tmp/nodelist
 
 echo Enable modules
 module purge
-module add python-intel pp R
+module add python-intel pp
 
 echo Starting servers
 srun ppserver.py -p 2048 -t 30 &

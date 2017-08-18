@@ -136,10 +136,11 @@ def main(pdir, mstep, outf):
 
     remaining = listofbonds(pdir)
 
+    job_server.wait()
+
     filestodel = []
     preds = {}
     for step in range(mstep, -1, -1):
-        job_server.wait('step{}'.format(step))
         resf = os.path.join(os.environ['SCRATCH'],
                             'step{}_score.pkl'.format(step))
         with open(resf, 'rb') as fh:

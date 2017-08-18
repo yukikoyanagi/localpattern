@@ -65,12 +65,47 @@ def findpatterns(step, data):
         cPickle.dump(patrot, o, -1)
 
 
+def collect(step):
+    """
+    Collect intermediate rotation files to a single file per step.
+    :param step: int; step number
+    :return:
+    """
+    import os
+    import cPickle
+    from glob import glob
+    from config import cfg
+
+    results = {}
+    tfs = glob(os.environ['SCRATCH'] + '/step{}_*.pkl'.format(step))
+
+    for tf in tfs:
+        with open(tf, 'rb') as fh:
+            d = cPickle.load(fh)
+        for k in d:
+            if k in results:
+                results[k] += d[k]
+            else:
+                results[k] = d[k]
+
+    outfile = os.path.join(cfg['outdir'], 'step{}'.format(step),
+                           'rotations.pkl')
+    with open(outfile, 'wb') as o:
+        cPickle.dump(results, o, -1)
+
+    # Clean up temp files
+    for tf in tfs:
+        os.remove(tf)
+
+
 def main():
     steps = range(cfg['max_step'] + 1)
     fs = glob(cfg['protdir'] + '/*.txt')
     subsets = []
     for k, g in groupby(enumerate(fs), key=lambda x: x[0] / 2000):
         subsets.append([f[1] for f in g])
+
+    submitted = []
 
     for step in steps:
         outfile = os.path.join(cfg['outdir'], 'step{}'.format(step),
@@ -83,30 +118,14 @@ def main():
             job_server.submit(findpatterns,
                               args=(step, subset),
                               group='step{}'.format(step))
+        submitted.append(step)
 
-    for step in steps:
-        job_server.wait('step{}'.format(step))
-        results = {}
-        outfs = glob(os.path.join(os.environ['SCRATCH'],
-                                  'step{}_*.pkl'.format(step)))
-        for outf in outfs:
-            with open(outf, 'rb') as fh:
-                d = cPickle.load(fh)
-            for k in d:
-                if k in results:
-                    results[k] += d[k]
-                else:
-                    results[k] = d[k]
+    job_server.wait()
 
-        outfile = os.path.join(cfg['outdir'], 'step{}'.format(step),
-                               'rotations.pkl')
-        with open(outfile, 'wb') as o:
-            cPickle.dump(results, o, -1)
+    for step in submitted:
+        job_server.submit(collect, args=(step,))
 
-        # Clean up temp files
-        for outf in outfs:
-            os.remove(outf)
-
+    job_server.wait()
 
 if __name__ == '__main__':
     main()
