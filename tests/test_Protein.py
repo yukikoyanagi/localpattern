@@ -105,12 +105,13 @@ def test_findpattern2():
                           bonds=[cbond,
                                  Pattern.Bond('T', 102, 201, False, 3.14)],
                           residue='LXLE',
-                          rotation=h1.rotation)
+                          rotation=h1.rotation,
+                          length=-2)
 
     assert pat == exp
 
-    h2 = Protein.Hbond(3, 250, 'LXLE', range(9))
-    t2 = Protein.Tbond(249, 340, 'ABCD', range(9), 0.45)
+    h2 = Protein.Hbond(243, 251, 'LXLE', range(9))
+    t2 = Protein.Tbond(250, 340, 'ABCD', range(9), 0.45)
     prt2 = Protein.Protein('test2')
     prt2.hbonds = [h2]
     prt2.tbonds = [t2]
@@ -128,7 +129,8 @@ def test_findpattern2():
                           bonds=[Pattern.Bond('H', 7, 116, False, None),
                                  Pattern.Bond('T', 105, 115, False, 3.1)],
                           residue='AAXX',
-                          rotation=h1.rotation)
+                          rotation=h1.rotation,
+                          length='L')
     assert pat == exp
 
     opt = Option.Option(os.path.join(cd, 'data', 'step105_opts'))

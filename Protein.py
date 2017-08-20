@@ -88,13 +88,17 @@ class Protein(object):
         cd = center.donor
         ca = center.acceptor
         tw = self.istwisted(center.rotation)
+        cl = (cd + 3)/3 - (ca + 1)/3
+        if abs(cl) > 6:
+            cl = 'L'
         cbond = Pattern.Bond('H', cd, ca, tw, None)
         dseg = range(cd-opts.window, cd+opts.window+1)
         aseg = range(ca-opts.window, ca+opts.window+1)
         rpat = Pattern.Pattern(segments=[dseg, aseg],
                                bonds=[cbond],
                                residue=center.residue,
-                               rotation=center.rotation)
+                               rotation=center.rotation,
+                               length=cl)
         rpat.handleresidue(opts.residue)
         hmax = cfg['max_hbond_level']
         tmax = cfg['max_tbond_level']
