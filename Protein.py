@@ -140,8 +140,9 @@ class Protein(object):
 
         # Apply --nearby-remotes parameter. We only apply this to hbonds.
         # Remote bonds are the bonds, where only one of the ends is inside
-        # the pattern.
+        # the pattern. We do not consider twist for these bonds (i.e. False)
         remotes = []
+        tlim = max(cfg['max_tbond_level'], 0)
         for hbnd in self.hbonds:
             b = Pattern.Bond('H', hbnd.donor, hbnd.acceptor,
                              self.istwisted(hbnd.rotation), None)
@@ -150,20 +151,20 @@ class Protein(object):
                     and any([
                         rpat.inwindow(c, b.start, opts.remotes,
                                       hlimit=cfg['max_hbond_level'],
-                                      tlimit=cfg['max_tbond_level'])
+                                      tlimit=tlim)
                         for c in [center.donor, center.acceptor]
                             ])):
                     remotes.append(Pattern.Bond(b.type, b.start,
-                                                -99, b.twisted, b.vdw))
+                                                -99, False, b.vdw))
                 elif (b.end in atoms
                       and any([
                         rpat.inwindow(c, b.end, opts.remotes,
                                       hlimit=cfg['max_hbond_level'],
-                                      tlimit=cfg['max_tbond_level'])
+                                      tlimit=tlim)
                         for c in [center.donor, center.acceptor]
                       ])):
                     remotes.append(Pattern.Bond(b.type, -99,
-                                                b.end, b.twisted, b.vdw))
+                                                b.end, False, b.vdw))
         rpat.bonds += remotes
 
         # Apply --nearby-twists parameter. Note nearby-twists takes only
