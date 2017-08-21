@@ -105,12 +105,13 @@ def test_findpattern2():
                           bonds=[cbond,
                                  Pattern.Bond('T', 102, 201, False, 3.14)],
                           residue='LXLE',
-                          rotation=h1.rotation)
+                          rotation=h1.rotation,
+                          length=-2)
 
     assert pat == exp
 
-    h2 = Protein.Hbond(3, 250, 'LXLE', range(9))
-    t2 = Protein.Tbond(249, 340, 'ABCD', range(9), 0.45)
+    h2 = Protein.Hbond(243, 251, 'LXLE', range(9))
+    t2 = Protein.Tbond(250, 340, 'ABCD', range(9), 0.45)
     prt2 = Protein.Protein('test2')
     prt2.hbonds = [h2]
     prt2.tbonds = [t2]
@@ -128,7 +129,8 @@ def test_findpattern2():
                           bonds=[Pattern.Bond('H', 7, 116, False, None),
                                  Pattern.Bond('T', 105, 115, False, 3.1)],
                           residue='AAXX',
-                          rotation=h1.rotation)
+                          rotation=h1.rotation,
+                          length='L')
     assert pat == exp
 
     opt = Option.Option(os.path.join(cd, 'data', 'step105_opts'))
@@ -150,17 +152,17 @@ def test_findpattern2():
     pat = p.findpattern2(p.hbonds[0], opt)
     assert isinstance(pat, Pattern.Pattern)
 
-    # opts = [Option.Option(os.path.join(cd, 'data', 'step{}_opts'.format(t)))
-    #         for t in [105, 106, 148]]
-    # for opt in opts:
-    #     for s in range(0, len(p.hbonds)+1, 20):
-    #         c = p.hbonds[s]
-    #         pat1 = p.findpattern(c, opt)
-    #         pat2 = p.findpattern2(c, opt)
-    #         print('opt: {}'.format(opt))
-    #         print('findpattern: {}'.format(pat1))
-    #         print('findpattern2: {}'.format(pat2))
-    #         assert pat1 == pat2
+    opt = Option.Option(os.path.join(cd, 'data', 'step116_opts'))
+    p = Protein.Protein('test5')
+    hf = os.path.join(cd, 'data', 'tst003.txt')
+    p.fromfiles(hf, None)
+    assert str(p.findpattern2(p.hbonds[0], opt)) == ('0123456:'
+                                                     '100101102103104105106_'
+                                                     'H3:103-'
+                                                     'H6:-99-'
+                                                     'H-99:2-'
+                                                     'H-99:5-_'
+                                                     'XXXX_L')
 
 
 def test_getogtbonds():

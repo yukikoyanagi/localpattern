@@ -52,7 +52,7 @@ def main():
             continue
         of = os.path.join(cfg['optsdir'], 'step{}_opts'.format(step))
         opt = Option.Option(of)
-        patrot = []
+        patrot = {}
         for f in fs:
             protid = os.path.splitext(os.path.basename(f))[0]
             tertf = os.path.join(cfg['tertdir'], protid + '.txt')
@@ -62,22 +62,15 @@ def main():
             prot = Protein.Protein(protid)
             prot.fromfiles(f, tertf)
             for bond in prot.hbonds:
-                patrot.append((str(prot.findpattern2(bond, opt)),
-                               bond.rotation))
-
-        cnt = Counter([x[0] for x in patrot])
-        filtered = [k for k in cnt.keys() if cnt[k] >= cfg['min_for_cluster']]
-
-        rotdict = {}
-        for x in patrot:
-            if x[0] in filtered:
-                try:
-                    rotdict[x[0]].append(x[1])
-                except KeyError:
-                    rotdict[x[0]] = [x[1]]
+                pat = str(prot.findpattern2(bond, opt))
+                if pat in patrot:
+                    patrot[pat].append(tuple(bond.rotation))
+                else:
+                    patrot[pat] = [tuple(bond.rotation)]
+            del prot
 
         with open(outfile, 'wb') as o:
-            cPickle.dump(rotdict, o)
+            cPickle.dump(patrot, o, protocol=-1)
 
 
 if __name__ == '__main__':

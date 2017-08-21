@@ -88,13 +88,17 @@ class Protein(object):
         cd = center.donor
         ca = center.acceptor
         tw = self.istwisted(center.rotation)
+        cl = (cd + 3)/3 - (ca + 1)/3
+        if abs(cl) > 6:
+            cl = 'L'
         cbond = Pattern.Bond('H', cd, ca, tw, None)
         dseg = range(cd-opts.window, cd+opts.window+1)
         aseg = range(ca-opts.window, ca+opts.window+1)
         rpat = Pattern.Pattern(segments=[dseg, aseg],
                                bonds=[cbond],
                                residue=center.residue,
-                               rotation=center.rotation)
+                               rotation=center.rotation,
+                               length=cl)
         rpat.handleresidue(opts.residue)
         hmax = cfg['max_hbond_level']
         tmax = cfg['max_tbond_level']
@@ -136,8 +140,9 @@ class Protein(object):
 
         # Apply --nearby-remotes parameter. We only apply this to hbonds.
         # Remote bonds are the bonds, where only one of the ends is inside
-        # the pattern.
+        # the pattern. We do not consider twist for these bonds (i.e. False)
         remotes = []
+        tlim = max(cfg['max_tbond_level'], 0)
         for hbnd in self.hbonds:
             b = Pattern.Bond('H', hbnd.donor, hbnd.acceptor,
                              self.istwisted(hbnd.rotation), None)
@@ -146,20 +151,20 @@ class Protein(object):
                     and any([
                         rpat.inwindow(c, b.start, opts.remotes,
                                       hlimit=cfg['max_hbond_level'],
-                                      tlimit=cfg['max_tbond_level'])
+                                      tlimit=tlim)
                         for c in [center.donor, center.acceptor]
                             ])):
                     remotes.append(Pattern.Bond(b.type, b.start,
-                                                -99, b.twisted, b.vdw))
+                                                -99, False, b.vdw))
                 elif (b.end in atoms
                       and any([
                         rpat.inwindow(c, b.end, opts.remotes,
                                       hlimit=cfg['max_hbond_level'],
-                                      tlimit=cfg['max_tbond_level'])
+                                      tlimit=tlim)
                         for c in [center.donor, center.acceptor]
                       ])):
                     remotes.append(Pattern.Bond(b.type, -99,
-                                                b.end, b.twisted, b.vdw))
+                                                b.end, False, b.vdw))
         rpat.bonds += remotes
 
         # Apply --nearby-twists parameter. Note nearby-twists takes only

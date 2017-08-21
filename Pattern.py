@@ -76,7 +76,8 @@ class Pattern(object):
         residue: 4 residues around the central bond
         rotation: the rotation associated to the central bond
     """
-    def __init__(self, segments=None, bonds=None, residue=None, rotation=None):
+    def __init__(self, segments=None, bonds=None, residue=None,
+                 rotation=None, length=None):
         if not segments:
             segments = []
         self.segments = segments
@@ -85,24 +86,27 @@ class Pattern(object):
         self.bonds = bonds
         self.residue = residue
         self.rotation = rotation
+        self.length = length
 
     def __eq__(self, other):
         return (self.segments == other.segments and
                 set(self.bonds) == set(other.bonds) and
-                self.residue == other.residue)
+                self.residue == other.residue and
+                self.length == other.length)
 
     def __ne__(self, other):
         return not self == other
 
     def __hash__(self):
         return hash(((a for s in self.segments for a in s), tuple(self.bonds),
-                     self.residue))
+                     self.residue, self.length))
 
     def __repr__(self):
         seg = ':'.join([''.join(map(str, s)) for s in self.segments])
         bonds = ''.join([str(b) for b in self.bonds])
         res = self.residue
-        return '{}_{}_{}'.format(seg, bonds, res)
+        length = self.length
+        return '{}_{}_{}_{}'.format(seg, bonds, res, length)
 
     def trim(self, center, hlimit, tlimit, opts):
         """
@@ -368,6 +372,7 @@ class Pattern(object):
 
         lpat.residue = self.residue
         lpat.rotation = self.rotation
+        lpat.length = self.length
         return lpat
 
     def handleresidue(self, scheme):
