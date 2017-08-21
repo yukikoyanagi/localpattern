@@ -15,6 +15,7 @@ import glob
 import subprocess
 import math
 import cPickle
+import re
 import pp
 
 import conv
@@ -75,7 +76,7 @@ def runstep(step, pdir, af):
     for pfile in pfiles:
         pid = os.path.splitext(os.path.basename(pfile))[0]
         tfile = os.path.join(cfg['tertdir'], '{}.txt'.format(pid))
-        if not os.path.exists(tfile):
+        if not os.path.exists(tfile) or cfg['max_tbond_level'] == -1:
             tfile = None
         prot = Protein.Protein(pid)
         prot.fromfiles(pfile, tfile)
@@ -110,9 +111,14 @@ def runstep(step, pdir, af):
 def listofbonds(pdir):
     res = []
     for f in glob.glob('{}/*.txt'.format(pdir)):
-        c = subprocess.check_output(['wc', '-l', f])
         p, _ = os.path.splitext(os.path.basename(f))
-        res.extend([(p, i) for i in xrange(1, int(c.split()[0])+1)])
+        with open(f) as fh:
+            for lineno, line in enumerate(fh):
+                cols = line.split()
+                if not re.search("__[US][US]$",
+                                 cols[cfg['hbond']['flags_col']]):
+                    continue
+                res.append((p, lineno+1))
     return res
 
 
@@ -214,8 +220,7 @@ def main(pdir, mstep, outf):
                         '{pt}\t{le}\t{st}').format(
                             pr=prot, l=lineno+1, s=pred[3], d=diff,
                             x=x*phi, y=y*phi, z=z*phi,
-                            pt=pred[0], le=pred[0].split('_')[1],
-                            st=pred[4]
+                            pt=pred[0], st=pred[4]
                         )
                 output.append(item)
             except KeyError:
