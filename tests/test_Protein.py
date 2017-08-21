@@ -156,12 +156,11 @@ def test_findpattern2():
     p = Protein.Protein('test5')
     hf = os.path.join(cd, 'data', 'tst003.txt')
     p.fromfiles(hf, None)
-    assert str(p.findpattern2(p.hbonds[0], opt)) == ('0123456:'
-                                                     '100101102103104105106_'
+    assert str(p.findpattern2(p.hbonds[0], opt)) == ('0-6:100-106_'
                                                      'H3:103-'
-                                                     'H6:-99-'
-                                                     'H-99:2-'
-                                                     'H-99:5-_'
+                                                     'H6:R-'
+                                                     'HR:2-'
+                                                     'HR:5-_'
                                                      'XXXX_L')
 
 

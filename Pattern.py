@@ -42,7 +42,8 @@ class Bond(namedtuple('Bond', 'type start end twisted vdw')):
             s = '+'
         else:
             s = '-'
-        return '{}{}:{}{}'.format(self.type, self.start, self.end, s)
+        start, end = [x if x + 99 else 'R' for x in [self.start, self.end]]
+        return '{}{}:{}{}'.format(self.type, start, end, s)
 
 
 """Atom represents an atom along a backbone segment.
@@ -102,7 +103,8 @@ class Pattern(object):
                      self.residue, self.length))
 
     def __repr__(self):
-        seg = ':'.join([''.join(map(str, s)) for s in self.segments])
+        seg = ':'.join(['-'.join(map(str, [s[0], s[-1]]))
+                        for s in self.segments])
         bonds = ''.join([str(b) for b in self.bonds])
         res = self.residue
         length = self.length
