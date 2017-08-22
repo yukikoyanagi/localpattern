@@ -68,9 +68,12 @@ class Pattern(object):
     Local pattern description of a hbond. This is simply a container for
     segments and bonds.
     Attributes:
-        segments: list of Segment objects. Segments are ordered as follows;
-        1. donor-side segment of the central hbond
-        2. acceptor-side segment of the central hbond
+        segments: list of Segment objects. Segments (when pattern is localised)
+        are ordered as follows;
+        1. the first segment (according to PDB atom numbering) connected the
+        central hbond
+        2. the second segment (according to PDB atom numbering), if different
+        from the segment #1, connected the central hbond
         Then we move along the 1st segment and list connected segments in the
         order of appearance. Then 2nd segment, and so on.
         bonds: list of Bond objects
@@ -319,8 +322,9 @@ class Pattern(object):
         """
         # Order the segments & bonds
         ordsegs = {}
-        sseg, = (s for s in self.segments if center.start in s)
-        eseg, = (s for s in self.segments if center.end in s)
+        first, second = sorted([center.start, center.end])
+        sseg, = (s for s in self.segments if first in s)
+        eseg, = (s for s in self.segments if second in s)
         ordsegs[0] = sseg
         if eseg != sseg:
             ordsegs[1] = eseg

@@ -202,32 +202,32 @@ def main(pdir, mstep, outf):
             try:
                 prot, _ = os.path.splitext(os.path.basename(f))
                 pred = preds[(prot, lineno+1)]
-                phi, x, y, z = pred[2]
-                # Make sure (x,y,z) is a unit vector.
-                n = math.sqrt(x**2 + y**2 + z**2)
-                x, y, z = x/n, y/n, z/n
-                guessrot = conv.ev2mat(phi, [x, y, z])
-
-                x2, y2, z2, phi2 = map(float, line.split()[15:19])
-                # Make sure (x,y,z) is a unit vector.
-                n2 = math.sqrt(x2**2 + y2**2 + z2**2)
-                x2, y2, z2 = x2/n2, y2/n2, z2/n2
-                truerot = conv.ev2mat(phi2, [x2, y2, z2])
-
-                diff = conv.so3dist(truerot, guessrot)
-                item = ('{pr}\t{l}\t{s:.4f}\t{d:.6f}\t'
-                        '{x:.6f},{y:.6f},{z:.6f}\t'
-                        '{pt}\t{le}\t{st}').format(
-                            pr=prot, l=lineno+1, s=pred[3], d=diff,
-                            x=x*phi, y=y*phi, z=z*phi,
-                            pt=pred[0], st=pred[4]
-                        )
-                output.append(item)
             except KeyError:
                 # Out list of predictions did not contain the
                 # particular bond, probably because local pattern
                 # could not be determined. We do the best we can.
                 continue
+            phi, x, y, z = pred[2]
+            # Make sure (x,y,z) is a unit vector.
+            n = math.sqrt(x**2 + y**2 + z**2)
+            x, y, z = x/n, y/n, z/n
+            guessrot = conv.ev2mat(phi, [x, y, z])
+
+            x2, y2, z2, phi2 = map(float, line.split()[15:19])
+            # Make sure (x,y,z) is a unit vector.
+            n2 = math.sqrt(x2**2 + y2**2 + z2**2)
+            x2, y2, z2 = x2/n2, y2/n2, z2/n2
+            truerot = conv.ev2mat(phi2, [x2, y2, z2])
+
+            diff = conv.so3dist(truerot, guessrot)
+            item = ('{pr}\t{l}\t{s:.4f}\t{d:.6f}\t'
+                    '{x:.6f},{y:.6f},{z:.6f}\t'
+                    '{pt}\t{st}').format(
+                        pr=prot, l=lineno+1, s=pred[3], d=diff,
+                        x=x*phi, y=y*phi, z=z*phi,
+                        pt=pred[0], st=pred[4]
+                    )
+            output.append(item)
 
     with open(outf, 'w') as f:
         f.write('\n'.join(output) + '\n')
