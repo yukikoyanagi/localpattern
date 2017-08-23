@@ -1,0 +1,975 @@
+# Vers 3: prøve at optimere runtime:
+# 1) findmodes: kun kigge på delmængde af bokse med data
+# Blot (x>0) i stedet for min egen H funktion.
+#
+# Vers2: Registrere -1 cases i output
+#
+# Rettelse 10/9-2015: to punkter fra 64-grid må ikke blive til samme 
+# punkt i 81-grid for n81=0, n64>0 case
+# Rettelse 2/10-2015: to punkter fra 64-grid må ikke blive til samme 
+# punkt i 81-grid for n81>0, n64>0 case
+#
+# Clustering of a dataset, not being part of larger dataset
+# Input: label with prefix for output and rotations (e1,e2,e3,th)
+# 
+# Constants
+nb=81 # number of divisions
+delta=2*pi/nb # length of interval
+#
+makemat=function(aa){  # makes SO(3) matrix
+th=sqrt(sum(aa^2))
+if (th>0){
+ u=aa[1]/th
+ v=aa[2]/th
+ w=aa[3]/th
+ omhat=rbind(c(0,-w,v),c(w,0,-u),c(-v,u,0))
+ return(diag(c(1,1,1))+omhat*sin(th)+(omhat%*%omhat)*(1-cos(th)))
+ } else {return(diag(c(1,1,1)))}
+}
+#
+# Function to calculate distance between two SO(3) points
+ distFctNy=function(v){
+ #
+  makemat=function(aa){
+  th=sqrt(sum(aa^2))
+  if (th>0){
+   u=aa[1]/th
+   v=aa[2]/th
+   w=aa[3]/th
+   omhat=rbind(c(0,-w,v),c(w,0,-u),c(-v,u,0))
+   return(diag(c(1,1,1))+omhat*sin(th)+(omhat%*%omhat)*(1-cos(th)))
+   } else {return(diag(c(1,1,1)))}
+  }
+ #
+ a=v[1:3]; b=v[4:6]
+ A=makemat(a); B=makemat(b)
+ cv=(sum(diag(A%*%t(B)))-1)/2
+ cv=ifelse(cv>1,1,cv)
+ return((acos(cv)))
+ }
+#
+# Function to calculate distance between two SO(3) points
+# det er faktisk kvadrede afstand, men bruges kun til interne sammenligninger
+ distFct=function(a,b){
+ #
+  makemat=function(aa){
+  th=sqrt(sum(aa^2))
+  if (th>0){
+   u=aa[1]/th
+   v=aa[2]/th
+   w=aa[3]/th
+   omhat=rbind(c(0,-w,v),c(w,0,-u),c(-v,u,0))
+   return(diag(c(1,1,1))+omhat*sin(th)+(omhat%*%omhat)*(1-cos(th)))
+   } else {return(diag(c(1,1,1)))}
+  }
+ #
+ A=makemat(a); B=makemat(b)
+ cv=(sum(diag(A%*%t(B)))-1)/2
+ cv=ifelse(cv>1,1,cv)
+ return((acos(cv))^2)
+ }
+#
+# Adding antipodal points
+medfct=function(a){
+xl=c(-1,1,-1,1,-1,1,-1,1)*delta/2
+yl=c(-1,-1,1,1,-1,-1,1,1)*delta/2
+zl=c(-1,-1,-1,-1,1,1,1,1)*delta/2
+x=a[1]; y=a[2]; z=a[3]
+cx=-pi+(round((x+pi)/delta+0.5)-0.5)*delta
+cy=-pi+(round((y+pi)/delta+0.5)-0.5)*delta
+cz=-pi+(round((z+pi)/delta+0.5)-0.5)*delta
+med=0
+for (m in 1:8){
+ b1=cx+xl[m]; b2=cy+yl[m]; b3=cz+zl[m];
+ thb=sqrt(b1^2+b2^2+b3^2)
+ if (thb<pi){med=1}
+ }
+return(med)
+}
+#
+#
+# Finding modes
+#
+findModes=function(nb0,x0,y0,z0){
+ pvallim1=0.003; pvallim2=0.01  # for starting new cluster
+ delta0=2*pi/nb0
+ # Evaluating p-values
+ pvalfct=function(ax,ay,az){
+  if (ax>3){dx=c(-1,-2,-3)} else {
+   if (ax==3){dx=c(-1,-2,-2)} else {
+    if (ax==2){dx=c(-1,-1,-1)} else {
+     dx=c(0,0,0)
+     }
+    }
+   }
+  if (ax<(nb0-2)){ux=c(1,2,3)} else {
+   if (ax==(nb0-2)){ux=c(1,2,2)} else {
+    if (ax==(nb0-1)){ux=c(1,1,1)} else {
+     ux=c(0,0,0)
+     }
+    }
+   }
+  if (ay>3){dy=c(-1,-2,-3)} else {
+   if (ay==3){dy=c(-1,-2,-2)} else {
+    if (ay==2){dy=c(-1,-1,-1)} else {
+     dy=c(0,0,0)
+     }
+    }
+   }
+  if (ay<(nb0-2)){uy=c(1,2,3)} else {
+   if (ay==(nb0-2)){uy=c(1,2,2)} else {
+    if (ay==(nb0-1)){uy=c(1,1,1)} else {
+     uy=c(0,0,0)
+     }
+    }
+   }
+  if (az>3){dz=c(-1,-2,-3)} else {
+   if (az==3){dz=c(-1,-2,-2)} else {
+    if (az==2){dz=c(-1,-1,-1)} else {
+     dz=c(0,0,0)
+     }
+    }
+   }
+  if (az<(nb0-2)){uz=c(1,2,3)} else {
+   if (az==(nb0-2)){uz=c(1,2,2)} else {
+    if (az==(nb0-1)){uz=c(1,1,1)} else {
+     uz=c(0,0,0)
+     }
+    }
+   }
+  ax1=c(dx[1]:ux[1]); ax2=c(dx[2]:ux[2]); ax3=c(dx[3]:ux[3])
+  ay1=c(dy[1]:uy[1]); ay2=c(dy[2]:uy[2]); ay3=c(dy[3]:uy[3])
+  az1=c(dz[1]:uz[1]); az2=c(dz[2]:uz[2]); az3=c(dz[3]:uz[3])
+  m1=length(ax1)*length(ay1)*length(az1)
+  m2=length(ax2)*length(ay2)*length(az2)-m1
+  m3=length(ax3)*length(ay3)*length(az3)-m2-m1
+  m1=m1-1
+  n1=sum(mafull0[ax+ax1,ay+ay1,az+az1])-mafull0[ax,ay,az]
+  n2=sum(mafull0[ax+ax2,ay+ay2,az+az2])-sum(mafull0[ax+ax1,ay+ay1,az+az1])
+  n3=sum(mafull0[ax+ax3,ay+ay3,az+az3])-sum(mafull0[ax+ax2,ay+ay2,az+az2])
+  return(c(n1,n2,n3,1-pbinom(n1-1,n1+n2,m1/(m1+m2)),
+  1-pbinom(n2-1,n2+n3,m2/(m2+m3))))
+  } # end pvalfct
+#
+#
+# finding box counts
+ x1=round((x0+pi)/delta0+0.5); y1=round((y0+pi)/delta0+0.5)
+ z1=round((z0+pi)/delta0+0.5) 
+ boxnr=x1+nb0*(y1-1)+nb0*nb0*(z1-1)
+ bant=hist(boxnr,breaks=c(1:(nb0^3+1)-0.5),plot=F)$counts  # box counts
+ mafull0=array(bant,dim=c(nb0,nb0,nb0))  # box counts
+#
+# calculating density factor for each box
+ posx=rep(c(1:nb0),(nb0)*(nb0))
+ posy=rep(rep(c(1:nb0),rep((nb0),(nb0))),(nb0))
+ posz=rep(c(1:nb0),rep((nb0)*(nb0),(nb0)))
+ a1=-pi+(posx-0.5)*delta0; a2=-pi+(posy-0.5)*delta0; a3=-pi+(posz-0.5)*delta0;
+ th=sqrt(a1^2+a2^2+a3^2)
+ a=ifelse(th<0.00001,1,ifelse(th>4,0,0.5*th^2/(1-cos(th))))
+ densityfac=array(a,dim=c(nb0,nb0,nb0))
+# 
+# box densitites
+ mafull=mafull0*densityfac  # box density
+# 
+ bant0=c(mafull)  # box density
+#
+#
+ ix=rep(c((-1):1),9)
+ iy=rep(rep(c((-1):1),rep(3,3)),3)
+ iz=rep(c((-1):1),rep(9,3))
+ ixx=rep(c((-2):2),25)
+ iyy=rep(rep(c((-2):2),rep(5,5)),5)
+ izz=rep(c((-2):2),rep(25,5))
+ ix=ix[-14]; iy=iy[-14]; iz=iz[-14];   # layer one
+ mc=(abs(ixx)<2)&(abs(iyy)<2)&(abs(izz)<2)
+ ixx=ixx[!mc]; iyy=iyy[!mc]; izz=izz[!mc];   # layer two
+# Version 3 ændring:
+ med0=(bant>0)&(posx>2)&(posx<(nb0-1))&(posy>2)&(posy<(nb0-1))&
+       (posz>2)&(posz<(nb0-1))
+ xx0=posx[med0]
+ yy0=posy[med0]
+ zz0=posz[med0]
+ med0=xx0+nb0*(yy0-1)+nb0*nb0*(zz0-1)
+ ma0=bant0[med0]   # densities for considered boxes
+#
+ mas1=rep(0,length(xx0))
+ mamax1=rep(0,length(xx0))
+ for (i in 1:26){
+  med1=(xx0+ix[i])+nb0*(yy0+iy[i]-1)+nb0*nb0*(zz0+iz[i]-1)
+  mas1=mas1+bant[med1]         # add counts in layer 1
+  mamax1=mamax1+((bant0[med1]-ma0)>0)    # add 1 if density is larger
+  }
+# 
+ mas2=rep(0,length(xx0))
+ mamax2=rep(0,length(xx0))
+ for (i in 1:98){
+  med2=(xx0+ixx[i])+nb0*(yy0+iyy[i]-1)+nb0*nb0*(zz0+izz[i]-1)
+  mas2=mas2+bant[med2]         # add counts in layer 2
+  mamax2=mamax2+((bant0[med2]-ma0)>0)    # add 1 if density is larger
+  }
+#
+ pval1=1-pbinom(mas1-1,mas1+mas2,26/(26+98))   # p-value from layer 1 and 2
+#
+ medlag1=(mamax1==0)&(mamax2==0)&(pval1<pvallim1)
+ boxnr=(c(1:(nb0^3))[med0])[medlag1]
+                             # local maximum and test of layer 1 and 2
+ densmode=ma0[medlag1]
+#
+ findbox=function(k){
+  i3=floor((k-1)/nb0/nb0)
+  i2=floor(((k-1)-i3*nb0*nb0)/nb0)
+  i1=(k-1)-i3*nb0*nb0-i2*nb0
+  return(c(i1,i2,i3)+1)
+  }
+ boxcoor=t(apply(cbind(boxnr),1,findbox))
+ mode=-pi+(boxcoor-0.5)*delta0
+# test to compare layer 2 and 3
+ if (sum(medlag1)>0){
+  pval=c()
+  for (i in 1:length(boxnr)){
+   pval=rbind(pval,pvalfct(boxcoor[i,1],boxcoor[i,2],boxcoor[i,3]))
+   }
+  mode=mode[pval[,5]<pvallim2,]
+  densmode=densmode[pval[,5]<pvallim2]
+  pval=pval[pval[,5]<pvallim2,]
+  } else {
+  pval=c()
+  }
+ return(list(modes=mode,pval=pval,densmode=densmode,
+  mafull=mafull,mafull0=mafull0))
+ } # end findModes
+#
+# Finding startmode
+#
+findModeStart=function(nb0,x0,y0,z0){
+ delta0=2*pi/nb0
+ # finding box counts
+ x1=round((x0+pi)/delta0+0.5); y1=round((y0+pi)/delta0+0.5)
+ z1=round((z0+pi)/delta0+0.5) 
+ boxnr=x1+nb0*(y1-1)+nb0*nb0*(z1-1)
+ bant=hist(boxnr,breaks=c(1:(nb0^3+1)-0.5),plot=F)$counts  # box counts
+ mafull0=array(bant,dim=c(nb0,nb0,nb0))  # box counts
+ #
+ # calculating density factor for each box
+ posx=rep(c(1:nb0),(nb0)*(nb0))
+ posy=rep(rep(c(1:nb0),rep((nb0),(nb0))),(nb0))
+ posz=rep(c(1:nb0),rep((nb0)*(nb0),(nb0)))
+ a1=-pi+(posx-0.5)*delta0; a2=-pi+(posy-0.5)*delta0; a3=-pi+(posz-0.5)*delta0;
+ th=sqrt(a1^2+a2^2+a3^2)
+ a=ifelse(th<0.00001,1,ifelse(th>4,0,0.5*th^2/(1-cos(th))))
+ densityfac=array(a,dim=c(nb0,nb0,nb0))
+ # 
+ # box densitites
+ mafull=mafull0*densityfac  # box density
+ # 
+ maxbox=which.max(c(mafull))
+ findbox=function(k){
+  i3=floor((k-1)/nb0/nb0)
+  i2=floor(((k-1)-i3*nb0*nb0)/nb0)
+  i1=(k-1)-i3*nb0*nb0-i2*nb0
+  return(c(i1,i2,i3)+1)
+  }
+ maxcoor=findbox(maxbox)
+ # Transforming to nb-division
+ mode=-pi+(maxcoor-0.5)*delta0
+ maxbox=round((mode+pi)/delta+0.5)
+ maxbox=ifelse(maxbox<3,3,ifelse(maxbox>(nb-2),nb-2,maxbox))
+ # finding box counts in nb-division
+ x1=round((x0+pi)/delta+0.5); y1=round((y0+pi)/delta+0.5)
+ z1=round((z0+pi)/delta+0.5) 
+ boxnr=x1+nb*(y1-1)+nb*nb*(z1-1)
+ bant=hist(boxnr,breaks=c(1:(nb^3+1)-0.5),plot=F)$counts  # box counts
+ mafull0=array(bant,dim=c(nb,nb,nb))  # box counts
+ maxL=which.max(mafull0[maxbox[1]+c(-2:2),maxbox[2]+c(-2:2),
+  maxbox[3]+c(-2:2)])
+ i3=floor((maxL-1)/25)
+ i2=floor(((maxL-1)-i3*25)/5)
+ i1=(maxL-1)-i3*25-i2*5
+ return(maxbox+c(i1,i2,i3)-2)
+ }   # End findModeStart
+#
+# Finding modes
+#
+findModesSecond=function(nb0,x0,y0,z0,modep){
+pvallim1=0.003; pvallim2=0.01  # for starting new cluster
+delta0=2*pi/nb0
+# Evaluating p-values
+pvalfct=function(ax,ay,az){
+if (ax>3){dx=c(-1,-2,-3)} else {
+ if (ax==3){dx=c(-1,-2,-2)} else {
+  if (ax==2){dx=c(-1,-1,-1)} else {
+   dx=c(0,0,0)
+   }
+  }
+ }
+if (ax<(nb0-2)){ux=c(1,2,3)} else {
+ if (ax==(nb0-2)){ux=c(1,2,2)} else {
+  if (ax==(nb0-1)){ux=c(1,1,1)} else {
+   ux=c(0,0,0)
+   }
+  }
+ }
+if (ay>3){dy=c(-1,-2,-3)} else {
+ if (ay==3){dy=c(-1,-2,-2)} else {
+  if (ay==2){dy=c(-1,-1,-1)} else {
+   dy=c(0,0,0)
+   }
+  }
+ }
+if (ay<(nb0-2)){uy=c(1,2,3)} else {
+ if (ay==(nb0-2)){uy=c(1,2,2)} else {
+  if (ay==(nb0-1)){uy=c(1,1,1)} else {
+   uy=c(0,0,0)
+   }
+  }
+ }
+if (az>3){dz=c(-1,-2,-3)} else {
+ if (az==3){dz=c(-1,-2,-2)} else {
+  if (az==2){dz=c(-1,-1,-1)} else {
+   dz=c(0,0,0)
+   }
+  }
+ }
+if (az<(nb0-2)){uz=c(1,2,3)} else {
+ if (az==(nb0-2)){uz=c(1,2,2)} else {
+  if (az==(nb0-1)){uz=c(1,1,1)} else {
+   uz=c(0,0,0)
+   }
+  }
+ }
+ax1=c(dx[1]:ux[1]); ax2=c(dx[2]:ux[2]); ax3=c(dx[3]:ux[3])
+ay1=c(dy[1]:uy[1]); ay2=c(dy[2]:uy[2]); ay3=c(dy[3]:uy[3])
+az1=c(dz[1]:uz[1]); az2=c(dz[2]:uz[2]); az3=c(dz[3]:uz[3])
+m1=length(ax1)*length(ay1)*length(az1)
+m2=length(ax2)*length(ay2)*length(az2)-m1
+m3=length(ax3)*length(ay3)*length(az3)-m2-m1
+m1=m1-1
+n1=sum(mafull0[ax+ax1,ay+ay1,az+az1])-mafull0[ax,ay,az]
+n2=sum(mafull0[ax+ax2,ay+ay2,az+az2])-sum(mafull0[ax+ax1,ay+ay1,az+az1])
+n3=sum(mafull0[ax+ax3,ay+ay3,az+az3])-sum(mafull0[ax+ax2,ay+ay2,az+az2])
+return(c(n1,n2,n3,1-pbinom(n1-1,n1+n2,m1/(m1+m2)),
+1-pbinom(n2-1,n2+n3,m2/(m2+m3))))
+}  # end pvalfct
+#
+#
+# finding box counts
+x1=round((x0+pi)/delta0+0.5); y1=round((y0+pi)/delta0+0.5)
+z1=round((z0+pi)/delta0+0.5) 
+boxnr=x1+nb0*(y1-1)+nb0*nb0*(z1-1)
+bant=hist(boxnr,breaks=c(1:(nb0^3+1)-0.5),plot=F)$counts  # box counts
+mafull0=array(bant,dim=c(nb0,nb0,nb0))  # box counts
+#
+# calculating density factor for each box
+posx=rep(c(1:nb0),(nb0)*(nb0))
+posy=rep(rep(c(1:nb0),rep((nb0),(nb0))),(nb0))
+posz=rep(c(1:nb0),rep((nb0)*(nb0),(nb0)))
+a1=-pi+(posx-0.5)*delta0; a2=-pi+(posy-0.5)*delta0; a3=-pi+(posz-0.5)*delta0;
+th=sqrt(a1^2+a2^2+a3^2)
+a=ifelse(th<0.00001,1,ifelse(th>4,0,0.5*th^2/(1-cos(th))))
+densityfac=array(a,dim=c(nb0,nb0,nb0))
+# 
+# box densitites
+mafull=mafull0*densityfac  # box density
+# 
+mode=rbind(-pi+(modep-0.5)*delta0)
+pval=pvalfct(modep[1],modep[2],modep[3])
+densmode=mafull[modep[1],modep[2],modep[3]]
+return(list(modes=mode,pval=pval,densmode=densmode,
+mafull=mafull,mafull0=mafull0))
+}  # End findModes
+#
+#
+#
+#
+StartNew=function(labS,rot){    # BEGIN START
+limmed1=1.5*delta # for joining a cluster at the late stage
+limreduk=2  # minimum number of classified boxes
+limwhile=20 # maimum number of runs at late stage
+limjoin=0.06 # joining nb=81 and nb=64 points
+limjoinSing=0.81 # joining single nb=81 and nb=64 points
+#
+#
+limdens=0  # include new from nb=64
+#
+#
+haartot=8*pi^2
+#
+# Preparing data
+#
+x=rot
+th0=x[,4]
+x0=x[,1]
+y0=x[,2]
+z0=x[,3]
+a=sqrt(x0^2+y0^2+z0^2)
+x0=x0/a; y0=y0/a; z0=z0/a
+#
+# Rotating matrices
+xt=32; yt=70; zt=31
+xt=-pi+(xt-0.5)*delta; yt=-pi+(yt-0.5)*delta; 
+zt=-pi+(zt-0.5)*delta;
+# 
+AT0=makemat(c(xt,yt,zt))
+# 
+AT=solve(AT0)
+# 
+si=sin(th0); co=cos(th0); co1=1-co
+b11=co+co1*x0^2; b12=-si*z0+co1*x0*y0; b13=si*y0+co1*x0*z0
+b21=si*z0+co1*x0*y0; b22=co+co1*y0*y0; b23=-si*x0+co1*z0*y0; 
+b31=-si*y0+co1*x0*z0; b32=si*x0+co1*y0*z0; b33=co+co1*z0*z0; 
+# 
+thN=acos((AT[1,1]*b11+AT[1,2]*b21+AT[1,3]*b31+
+AT[2,1]*b12+AT[2,2]*b22+AT[2,3]*b32+AT[3,1]*b13+AT[3,2]*b23+AT[3,3]*b33-1)/2)
+si2=2*sin(thN)
+e1=((AT[3,1]*b12+AT[3,2]*b22+AT[3,3]*b32)-
+(AT[2,1]*b13+AT[2,2]*b23+AT[2,3]*b33))/si2
+e2=((AT[1,1]*b13+AT[1,2]*b23+AT[1,3]*b33)-
+(AT[3,1]*b11+AT[3,2]*b21+AT[3,3]*b31))/si2
+e3=((AT[2,1]*b11+AT[2,2]*b21+AT[2,3]*b31)-
+(AT[1,1]*b12+AT[1,2]*b22+AT[1,3]*b32))/si2
+# rotated data points
+x0=e1*thN
+y0=e2*thN
+z0=e3*thN
+#
+# These are the transformed datapoints
+#
+# boxnumber for later bondclass
+x1=round((x0+pi)/delta+0.5); y1=round((y0+pi)/delta+0.5)
+z1=round((z0+pi)/delta+0.5) 
+boxnrbasic=x1+nb*(y1-1)+nb*nb*(z1-1)
+###################################
+# Adding antipodal points
+th=sqrt(x0^2+y0^2+z0^2)
+th=ifelse(th>0,th,0.00001)
+ex=x0/th; ey=y0/th; ez=z0/th; 
+thpod=pi+(pi-th)
+xpod=-ex*thpod; ypod=-ey*thpod; zpod=-ez*thpod;
+n1=length(th)
+med=(thpod<(pi+2*delta))&(abs(xpod)<pi)&(abs(ypod)<pi)&(abs(zpod)<pi)
+thpod=thpod[med]; xpod=xpod[med]; ypod=ypod[med]; zpod=zpod[med]; 
+n2=length(thpod)
+medth=apply(cbind(xpod,ypod,zpod),1,medfct) # couple of minutes
+thpod=thpod[medth==1]; xpod=xpod[medth==1]; ypod=ypod[medth==1];
+zpod=zpod[medth==1]; 
+n3=length(thpod)
+x0=c(x0,xpod); y0=c(y0,ypod); z0=c(z0,zpod); 
+#
+#
+#
+# calculating density factor for each box
+posx=rep(c(1:nb),(nb)*(nb))
+posy=rep(rep(c(1:nb),rep((nb),(nb))),(nb))
+posz=rep(c(1:nb),rep((nb)*(nb),(nb)))
+a1=-pi+(posx-0.5)*delta; a2=-pi+(posy-0.5)*delta; a3=-pi+(posz-0.5)*delta;
+th=sqrt(a1^2+a2^2+a3^2)
+a=ifelse(th<0.00001,1,ifelse(th>4,0,0.5*th^2/(1-cos(th))))
+haar=ifelse(a>0,1/a,0)
+haar=array(haar,dim=c(nb,nb,nb))
+# 
+#
+print("Start of nb=64")
+find64=findModes(64,x0,y0,z0)
+print("Start of nb=81")
+find81=findModes(nb,x0,y0,z0)
+print("End of nb=81")
+#
+mode64=rbind(find64$modes)
+if (dim(mode64)[2]==0){
+ k64=0; mode64=c()} else {
+ k64=dim(mode64)[1]}
+densmode64=find64$densmode
+pval64=rbind(find64$pval)
+mode81=rbind(find81$modes)
+if (dim(mode81)[2]==0){
+ k81=0; mode81=c()} else {
+ k81=dim(mode81)[1]}
+densmode81=find81$densmode
+pval81=rbind(find81$pval)
+mafull=find81$mafull
+mafull0=find81$mafull0
+#
+mode=rbind(mode81,mode64)
+#
+if ((k64>0)&(k81>0)){  # nonempty set of modes in both runs
+ resdist=matrix(0,k64,k81)
+ for (i in 1:k64){ for (j in 1:k81){
+  resdist[i,j]=distFct(mode64[i,],mode81[j,])
+ }}                 # distances between modes from two runs
+#
+ med81=rep(1,k81)        # modes included
+ med64=rep(1,k64)        # modes included
+ for (i in 1:k64){
+  taet=(resdist[i,]<limjoin)   # modes to be joined from n81
+  if (sum(taet)>1){
+   med81[taet]=rep(0,sum(taet))  # modes are removed from n81
+   med81[(c(1:k81)[taet])[which.max(densmode81[taet])]]=1 # one is added again
+   med64[i]=0                    # mode is removed from n64
+   } else {
+   if (sum(taet)==1){       # only one close by in n81
+    med64[i]=0              # mode is removed from n64
+    } else {                # none from n81 are close by
+  # if (densmode64[i]>limdens){ med64[i]=0 } # mode is removed from n64:wrong?
+   if (densmode64[i]<limdens){ med64[i]=0 } # mode is removed from n64
+#
+   taet1=(resdist[i,]<limjoinSing)   # modes to be joined from n81
+   if (sum(taet1)>0){med64[i]=0}
+#
+    }
+   }
+  }
+#
+ modebox64=rbind(round((pi+mode64)/delta+0.5)) # n64 modes in n81 box
+ boxvec64=rep(0,k64) # used to check for identical modes
+ for (i in 1:k64){
+  if (med64[i]==1){
+   moh=modebox64[i,]
+   mohw=which.max(c(mafull[moh[1]+c(-1:1),moh[2]+c(-1:1),moh[3]+c(-1:1)]))
+   iz=floor((mohw-1)/9); iy=floor((mohw-1-iz*9)/3); ix=mohw-1-9*iz-3*iy
+   moh=moh+c(ix-1,iy-1,iz-1)
+   mohnr=moh[1]+(moh[2]-1)*nb+(moh[3]-1)*nb*nb
+   if (sum(boxvec64==mohnr)==0){
+    boxvec64[i]=mohnr
+    modebox64[i,]=moh # n64 mode is replaced by box from n81
+    densmode64[i]=mafull[moh[1],moh[2],moh[3]] # density at chosen mode box
+   } else {med64[i]=0}
+   }
+  }
+#
+ modebox81=rbind(round((pi+mode81)/delta+0.5)) # n81 mode boxes
+#
+ mode=rbind(modebox81[med81==1,],modebox64[med64==1,]) # combining n81 and n64
+ pval=rbind(pval81[med81==1,],pval64[med64==1,])
+ modedens=c(densmode81[med81==1],densmode64[med64==1])
+ ncl81=dim(rbind(modebox81[med81==1,]))[1]
+ ncl64=dim(rbind(modebox64[med64==1,]))[1]
+ } else {    # end of nonempty set of modes in both runs
+ if (k64>0){ # now n81=0
+  modebox64=rbind(round((pi+mode64)/delta+0.5)) # n64 modes in n81 box
+  boxvec64=rep(0,k64) # used to check for identical modes
+  for (i in 1:k64){
+   moh=modebox64[i,]
+   mohw=which.max(c(mafull[moh[1]+c(-1:1),moh[2]+c(-1:1),moh[3]+c(-1:1)]))
+   iz=floor((mohw-1)/9); iy=floor((mohw-1-iz*9)/3); ix=mohw-1-9*iz-3*iy
+   moh=moh+c(ix-1,iy-1,iz-1)
+   mohnr=moh[1]+(moh[2]-1)*nb+(moh[3]-1)*nb*nb
+   if (sum(boxvec64==mohnr)==0){
+    boxvec64[i]=mohnr
+    modebox64[i,]=moh # n64 mode is replaced by box from n81
+    densmode64[i]=mafull[moh[1],moh[2],moh[3]] # density at chosen mode box
+   } 
+   }
+  k64=sum(boxvec64>0)
+  modebox64=rbind(modebox64[boxvec64>0,])
+  densmode64=densmode64[boxvec64>0]
+  ncl81=0
+  ncl64=k64
+  mode=rbind(modebox64)
+  pval=rbind((rbind(pval64))[boxvec64>0,])
+  modedens=densmode64
+  }
+ if (k81>0){ # now n64=0
+  modebox81=rbind(round((pi+mode81)/delta+0.5)) # n81 mode boxes
+  ncl81=k81
+  ncl64=0
+  mode=rbind(modebox81)
+  pval=rbind(pval81)
+  modedens=densmode81
+  }
+ }  # end of one of n64 or n81 equal to 0
+#
+if ((k81+k64)==0){
+print("no modes found initially")
+# Find start mode
+modepoint=findModeStart(64,x0,y0,z0)
+#
+print("Start of nb=81")
+find81=findModesSecond(nb,x0,y0,z0,modepoint)
+print("End of nb=81")
+#
+mode81=rbind(find81$modes)
+k81=dim(mode81)[1]
+densmode81=find81$densmode
+pval81=rbind(find81$pval)
+mafull=find81$mafull
+mafull0=find81$mafull0
+#
+ modebox81=rbind(round((pi+mode81)/delta+0.5))
+ ncl81=k81
+ ncl64=0
+ mode=rbind(modebox81)
+ pval=rbind(pval81)
+ modedens=densmode81
+}
+#
+#
+ncl=dim(mode)[1]
+wpoi=cbind(c(1:ncl),mode,modedens)
+#
+modenr=mode[,1]+nb*(mode[,2]-1)+nb*nb*(mode[,3]-1)
+#
+posx=rep(c(1:nb),(nb)*(nb))
+posy=rep(rep(c(1:nb),rep((nb),(nb))),(nb))
+posz=rep(c(1:nb),rep((nb)*(nb),(nb)))
+bval=c(mafull)
+# 
+posx=posx[-modenr]
+posy=posy[-modenr]
+posz=posz[-modenr]
+bval=bval[-modenr]
+# 
+sval=rev(sort(bval))
+oval=rev(order(bval))
+posx=posx[oval]
+posy=posy[oval]
+posz=posz[oval]
+k01=sum(sval>0)
+k0=k01
+#
+maclas=array(0,dim=c(nb,nb,nb))   # array with cluster number
+for (i in 1:ncl){
+ maclas[mode[i,1],mode[i,2],mode[i,3]]=i
+ }
+# 
+ixvec=rep(c((-2):2),25)
+iyvec=rep(rep(c((-2):2),rep(5,5)),5)
+izvec=rep(c((-2):2),rep(25,5))
+divec=apply(cbind(abs(ixvec),abs(iyvec),abs(izvec)),1,max)
+#
+modus0=mode
+pt=0
+if (k0>0){
+for (i in 1:k0){
+ax=posx[i]; ay=posy[i]; az=posz[i];   # next box to look at
+x=ax+ixvec; y=ay+iyvec; z=az+izvec;   # all neighbours
+bx=-pi+(x-0.5)*delta; by=-pi+(y-0.5)*delta; bz=-pi+(z-0.5)*delta;  
+th0=sqrt(bx^2+by^2+bz^2)
+ma=apply(cbind(x,y,z),1,max)
+mi=apply(cbind(x,y,z),1,min)
+thpod=pi+(pi-th0)
+res=matrix(0,125,2)  # (neighbour, density,boxnumber)
+for (t in 1:125){    # runs through neighbours
+ if ((mi[t]>0)&(ma[t]<=nb)){  # neighbour inside 1..nb
+  a0=maclas[x[t],y[t],z[t]]  # cluster number (or zero) of neighbour 
+  if (a0>0){                 # neigbour belongs to a cluster
+   res[t,]=c(a0,mafull[x[t],y[t],z[t]])
+   } else {                  # neighbour does not belong to a cluster
+   if (th0[t]>pi){           # neighbour is antipodal
+     thpod=pi+(pi-th0[t])
+     bbx=-bx[t]*thpod/th0[t]; bby=-by[t]*thpod/th0[t]; bbz=-bz[t]*thpod/th0[t];
+     x1=round((bbx+pi)/delta+0.5); y1=round((bby+pi)/delta+0.5)
+     z1=round((bbz+pi)/delta+0.5) 
+     res[t,]=c(maclas[x1,y1,z1],mafull[x1,y1,z1])
+     } else {
+     res[t,]=c(0,mafull[x[t],y[t],z[t]])
+     }
+   }
+  } else {                 # neighbour outside 1..nb
+  thpod=pi+(pi-th0[t])
+  bbx=-bx[t]*thpod/th0[t]; bby=-by[t]*thpod/th0[t]; bbz=-bz[t]*thpod/th0[t];
+  x1=round((bbx+pi)/delta+0.5); y1=round((bby+pi)/delta+0.5)
+  z1=round((bbz+pi)/delta+0.5) 
+  res[t,]=c(maclas[x1,y1,z1],mafull[x1,y1,z1])
+  }
+}
+if (max(res[,1])>0){     # there is a classified neighbour
+ if (max(res[divec<2,1])>0){# there is a close classified neighbour
+  med=((divec<2)&(res[,1]>0)) # close and classified neighbours
+  k=(res[med,1])[which.max(res[med,2])] # cluster number for high density neigh
+  wpoi=rbind(wpoi,c(k,ax,ay,az,sval[i]))
+  maclas[ax,ay,az]=k
+  } else {
+  med=((divec==2)&(res[,1]>0)) # nonclose and classified neighbours
+  k=(res[med,1])[which.max(res[med,2])] # cluster number
+  wpoi=rbind(wpoi,c(k,ax,ay,az,sval[i]))
+  maclas[ax,ay,az]=k
+ }
+} else {
+ wpoi=rbind(wpoi,c(0,ax,ay,az,sval[i])) # non-classified
+ maclas[ax,ay,az]=0
+}
+pt=pt+1; if (pt==1000){pt=0; print(c(i))}
+} # end for i in 1:k0
+} # end if (k0>0)
+# 
+# 
+# Consideration of non-classified
+nonwpoi=rbind(wpoi[wpoi[,1]==0,2:5])
+wpoi=rbind(wpoi[wpoi[,1]>0,])
+# cluster size
+his0=hist(wpoi[,1],breaks=c(1:(ncl+1))-0.5,plot=F)$counts
+#
+#
+#
+maxcl=max(wpoi[,1])
+wpoi1=wpoi
+maclas1=maclas
+#
+#
+k02=dim(nonwpoi)[1]
+# 
+# classifying some of the non-classified boxes
+#
+nwhil=0; reduk=20
+while ((k02>0)&(reduk>limreduk)&(nwhil<limwhile)){
+nwhil=nwhil+1
+print(c(k02,reduk,nwhil))
+#
+b0=wpoi1[,2:4]
+b1=rbind(-pi+(b0-0.5)*delta)
+phi=sqrt(b1[,1]^2+b1[,2]^2+b1[,3]^2)
+b=b1/phi
+sinphi=sin(phi); cosphi=1-cos(phi)
+sinb=2*sinphi*b  # sinphi*2*b
+cosb1b3=cosphi*b[,1]*b[,3]
+sinb2=sinphi*b[,2]
+cosb1b1=cosphi*b[,1]*b[,1]
+cosb2b2=cosphi*b[,2]*b[,2]
+cosb3b3=cosphi*b[,3]*b[,3]
+cosb1b2=cosphi*b[,1]*b[,2]
+cosb2b3=cosphi*b[,2]*b[,3]
+#
+Res=c()
+for (i in 1:k02){
+ a0=nonwpoi[i,1:3]   # next box to look at
+ a1=-pi+(a0-0.5)*delta
+ th=sqrt(sum(a1^2)); 
+ if (th==0){ a=c(1,0,0) } else { a=a1/th }
+ sinth=sin(th); costh=1-cos(th)
+ cv=(2-2*cosphi+sinth*(sinb%*%cbind(a))-2*costh+
+ costh*(cosb1b1*(1+a[1]^2)+cosb2b2*(1+a[2]^2)+cosb3b3*(1+a[3]^2)+
+ 2*(a[1]*a[2]*cosb1b2+a[1]*a[3]*cosb1b3+a[2]*a[3]*cosb2b3)))/2
+ cv=ifelse(cv>1,1,ifelse(cv<(-1),-1,cv))
+ d0=(acos(cv))^2
+ kl0=wpoi1[,1]
+ d0w=which.min(d0)
+ Res=rbind(Res,c(d0[d0w],kl0[d0w],a0,nonwpoi[i,4]))
+}
+mednye=(Res[,1]<limmed1)
+Res0=rbind(Res[mednye,2:6])
+wpoi1=rbind(wpoi1,Res0)
+knye=sum(mednye)
+if (knye>0){
+ for (i in 1:knye){
+   maclas1[Res0[i,2],Res0[i,3],Res0[i,4]]=Res0[i,1]
+   }
+ }
+# medtage alle
+mednye1=(Res[,1]>=limmed1)
+Res0=rbind(Res[mednye1,2:6])
+knye1=sum(mednye1)
+if (knye1>0){
+ wpoi1=rbind(wpoi1,cbind(-Res0[,1],rbind(Res0[,2:5])))
+ for (i in 1:knye1){
+   maclas1[Res0[i,2],Res0[i,3],Res0[i,4]]=-Res0[i,1]
+   }
+ }
+#
+noncl=rep(0,k02)
+noncl[mednye]=rep(1,knye)
+noncl[mednye1]=rep(1,knye1)
+#
+nonwpoi=rbind(nonwpoi[noncl==0,])
+k02=dim(nonwpoi)[1]
+reduk=knye
+}
+#
+if (k02>0){
+ nonwpoi=rbind(nonwpoi)
+ wpoi1=rbind(wpoi1,cbind(rep(-1,k02),nonwpoi))
+ for (i in 1:k02){
+  maclas1[nonwpoi[i,1],nonwpoi[i,2],nonwpoi[i,3]]=-1
+  }
+ }
+#
+#
+# total population of cluster
+popsum=rep(0,maxcl)
+for (jt in 1:maxcl){
+medpop=(maclas1==jt)
+if (sum(medpop)>0){popsum[jt]=sum(mafull0[medpop])}
+}
+#
+# Total nonclassified belonging to different clusters
+pop0sum=rep(0,maxcl)
+for (jt in 1:maxcl){
+medpop=(maclas1==(-jt))
+if (sum(medpop)>0){pop0sum[jt]=sum(mafull0[medpop])}
+}
+#
+if (maxcl==1){modus0=rbind(modus0); pval=rbind(pval)}
+# renumbering wpoi
+ord=rev(order(popsum))
+wpoiH=wpoi1
+for (jt in 1:maxcl){
+k=sum(wpoi1[,1]==ord[jt])
+if (k>0){
+ wpoiH[wpoi1[,1]==ord[jt],1]=rep(jt,k)
+ }
+k=sum(wpoi1[,1]==(-ord[jt]))
+if (k>0){
+ wpoiH[wpoi1[,1]==(-ord[jt]),1]=rep(-jt,k)
+ }
+}
+# renumbering maclas1
+maclas2=maclas1
+for (jt in 1:maxcl){
+k=sum(maclas1==ord[jt])
+if (k>0){
+ maclas2[maclas1==ord[jt]]=rep(jt,k)
+ }
+k=sum(maclas1==(-ord[jt]))
+if (k>0){
+ maclas2[maclas1==(-ord[jt])]=rep(-jt,k)
+ }
+}
+# renumbering modus0 and pval and his0
+modus1=modus0; his1=his0
+pval1=pval
+for (jt in 1:maxcl){
+ modus1[jt,]=modus0[ord[jt],]
+ pval1[jt,]=pval[ord[jt],]
+ his1[jt]=his0[ord[jt]]
+}
+modus0=modus1
+pval=pval1
+his0=his1
+# 
+labUd=paste(labS,"_BoxId.txt",sep="")
+write(t(wpoiH),file=labUd,ncolumns=5)
+#
+# Description:
+#  column 1: cluster number
+#  columns 2-4: x,y,z for points from transformed grid
+#  column 5: density from box
+#
+#
+### labUd=paste(labS,"_BoxClass.txt",sep="")
+### write(c(maclas2),file=labUd,ncolumns=10)
+# 
+bondclass=maclas2[boxnrbasic]
+#
+### labUd=paste(labS,"_BondClass.txt",sep="")
+### write(bondclass0,file=labUd,ncolumns=10)
+# 
+# total density of cluster
+#
+denmode=rep(0,maxcl)
+densum=rep(0,maxcl)
+den0sum=rep(0,maxcl)
+volsum=rep(0,maxcl)
+vol0sum=rep(0,maxcl)
+boxsum=rep(0,maxcl)
+box0sum=rep(0,maxcl)
+nummode=rep(0,maxcl)
+numsum=rep(0,maxcl)
+num0sum=rep(0,maxcl)
+dentotal=sum(mafull)
+numtotal=length(bondclass)
+for (jt in 1:maxcl){
+denmode[jt]=mafull[modus0[jt,1],modus0[jt,2],modus0[jt,3]]
+densum[jt]=sum(mafull[maclas2==jt])
+den0sum[jt]=sum(mafull[maclas2==(-jt)])
+volsum[jt]=sum(haar[maclas2==jt])*delta^3/haartot
+vol0sum[jt]=sum(haar[maclas2==(-jt)])*delta^3/haartot
+boxsum[jt]=sum(maclas2==jt)
+box0sum[jt]=sum(maclas2==(-jt))
+nummode[jt]=mafull0[modus0[jt,1],modus0[jt,2],modus0[jt,3]]
+numsum[jt]=sum(bondclass==jt)
+num0sum[jt]=sum(bondclass==(-jt))
+}
+# 
+modus=-pi+(modus0-0.5)*delta
+pox=modus[,1]; poy=modus[,2]; poz=modus[,3]; npox=maxcl
+#
+bc=wpoiH[,1]
+ncl=max(bc)
+peak=c()
+for (j in 1:ncl){
+ boh=rbind(wpoiH[bc==j,2:4])
+ x=-pi+(boh[,1]-0.5)*delta
+ y=-pi+(boh[,2]-0.5)*delta
+ z=-pi+(boh[,3]-0.5)*delta;
+ th=sqrt(x^2+y^2+z^2)
+ a=ifelse(th<0.00001,1,ifelse(th>4,0,0.5*th^2/(1-cos(th))))
+ deh=wpoiH[bc==j,5]/a
+ modh=modus[j,]
+ n=length(x)
+ di=apply(cbind(rep(modh[1],n),rep(modh[2],n),rep(modh[3],n),x,y,z),1,distFctNy)
+ met=sum(di*deh)/sum(deh)
+ di1=sort(di)
+ di2=order(di)
+ dcs=cumsum(deh[di2])
+ dt=sum(deh)
+ ditop=di1[dcs<0.7*dt]
+ maxdi=ifelse(length(ditop)>0,max(ditop),0)
+ pe=c(met,max(di),maxdi)
+ peak=rbind(peak,pe)
+ }
+# Tage alle med
+peak0=c()
+for (j in 1:ncl){
+ boh=rbind(wpoiH[bc==j,2:4],wpoiH[bc==(-j),2:4])
+ x=-pi+(boh[,1]-0.5)*delta
+ y=-pi+(boh[,2]-0.5)*delta
+ z=-pi+(boh[,3]-0.5)*delta;
+ th=sqrt(x^2+y^2+z^2)
+ a=ifelse(th<0.00001,1,ifelse(th>4,0,0.5*th^2/(1-cos(th))))
+ deh=c(wpoiH[bc==j,5],wpoiH[bc==(-j),5])/a
+ modh=modus[j,]
+ n=length(x)
+ di=apply(cbind(rep(modh[1],n),rep(modh[2],n),rep(modh[3],n),x,y,z),1,distFctNy)
+ met=sum(di*deh)/sum(deh)
+ di1=sort(di)
+ di2=order(di)
+ dcs=cumsum(deh[di2])
+ dt=sum(deh)
+ ditop=di1[dcs<0.7*dt]
+ maxdi=ifelse(length(ditop)>0,max(ditop),0)
+ pe=c(met,max(di),maxdi)
+ peak0=rbind(peak0,pe)
+ }
+#
+Ud1=cbind(c(1:ncl),modus0,nummode,numsum,num0sum,boxsum,box0sum,
+denmode,densum,den0sum,volsum,vol0sum,
+peak,peak0)
+#
+# Write summary
+#
+labUd=paste(labS,"_Summary.txt",sep="")
+write(t(Ud1),file=labUd,ncolumns=20,sep="\t")
+#
+print("number of cluster:  "); print(c(maxcl,ncl81,ncl64))
+#
+#
+return(c(maxcl,ncl81,ncl64))
+}
+# END OF START
+
+# _Summary.txt:
+# klusternr, bx, by, bz, antal i mode, antal i kluster, antal i -kluster, 
+# antal bokse i kluster, antal bokse i -kluster, density i mode, 
+# sum of densitites i kluster, sum of densitites i -kluster,
+# volumen af kluster, volumen af -kluster, 
+# mean distance to mode, maximum distance to mode, peakness for kluster,
+# mean distance (all) to mode, maximum distance (all) to mode, 
+# peakness (all) for kluster,
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

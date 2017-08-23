@@ -80,8 +80,8 @@ def runstep(step, pdir, af):
             tfile = None
         prot = Protein.Protein(pid)
         prot.fromfiles(pfile, tfile)
-        for i, bnd in enumerate(prot.hbonds):
-            bonds[(pid, i+1)] = str(prot.findpattern2(bnd, opt))
+        for bnd in prot.hbonds:
+            bonds[(pid, bnd.lineno)] = str(prot.findpattern2(bnd, opt))
 
     # Now load assess file
     with open(af) as f:
