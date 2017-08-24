@@ -22,7 +22,7 @@ import Option
 # Set up servers
 ppservers = open('/tmp/nodelist').read().strip().split()
 ppservers = tuple(pp + ':2048' for pp in ppservers)
-job_server = pp.Server(0, ppservers=ppservers)
+job_server = pp.Server(0, ppservers=ppservers, socket_timeout=7200)
 
 
 def findpatterns(step, data):
@@ -102,7 +102,7 @@ def main():
     steps = range(cfg['max_step'] + 1)
     fs = glob(cfg['protdir'] + '/*.txt')
     subsets = []
-    for k, g in groupby(enumerate(fs), key=lambda x: x[0] / 2000):
+    for k, g in groupby(enumerate(fs), key=lambda x: x[0] / 500):
         subsets.append([f[1] for f in g])
 
     submitted = []

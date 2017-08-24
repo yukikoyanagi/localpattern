@@ -2,7 +2,7 @@
 #
 #SBATCH --account austmathjea_slim
 #SBATCH --nodes 32                 # number of nodes
-#SBATCH --time 6:00:00            # max time (HH:MM:SS)
+#SBATCH --time 20:00:00            # max time (HH:MM:SS)
 #SBATCH --mail-type=FAIL,END
 #
 # File: patrot_prll.sh
@@ -31,7 +31,7 @@ module purge
 module add python-intel pp
 
 echo Starting servers
-srun ppserver.py -p 2048 -t 30 &
+srun ppserver.py -p 2048 -t 30 -k 7200 &
 sleep 1 # sleep a bit to ensure that the servers have started
 
 echo Starting Python program
