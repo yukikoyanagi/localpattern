@@ -15,7 +15,7 @@ from operator import itemgetter
 import conv
 import Pattern
 
-Hbond = namedtuple('Hbond', 'donor acceptor residue rotation')
+Hbond = namedtuple('Hbond', 'donor acceptor residue rotation lineno')
 Tbond = namedtuple('Tbond', 'left right residue rotation vdw')
 
 
@@ -48,7 +48,7 @@ class Protein(object):
         :return:
         """
         with open(hfile) as hf:
-            for line in hf:
+            for k, line in enumerate(hf):
                 cols = line.split()
                 # we only consider intra-chain bonds (indicated by __),
                 # and the last two characters must be either U (unique)
@@ -62,7 +62,7 @@ class Protein(object):
                 residue = [cols[i] for i in cfg['hbond']['res_cols']]
                 rot = map(float, [cols[i] for i in cfg['hbond']['rot_cols']])
                 rot.append(float(cols[cfg['hbond']['rot_phi']]))
-                self.hbonds.append(Hbond(donidx, accidx, residue, rot))
+                self.hbonds.append(Hbond(donidx, accidx, residue, rot, k+1))
 
         if not tfile:
             return

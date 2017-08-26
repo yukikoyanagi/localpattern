@@ -2,7 +2,7 @@
 #
 #SBATCH --account austmathjea_slim
 #SBATCH --nodes 32                 # number of nodes
-#SBATCH --time 6:00:00            # max time (HH:MM:SS)
+#SBATCH --time 20:00:00            # max time (HH:MM:SS)
 #SBATCH --mail-type=FAIL,END
 #
 # File: patrot_prll.sh

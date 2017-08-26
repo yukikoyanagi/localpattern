@@ -56,7 +56,7 @@ def test_getbondsat():
 
 
 def test_grow():
-    h1 = Protein.Hbond(30, 61, 'ABCD', range(9))
+    h1 = Protein.Hbond(30, 61, 'ABCD', range(9), 1)
     t1 = Protein.Tbond(31, 46, 'ABCD', range(9), 3.14)
     prt = Protein.Protein('test')
     prt.hbonds = [h1]
@@ -78,7 +78,7 @@ def test_grow():
     assert prt.grow(pat) == expected
 
     prt.tbonds = []
-    h2 = Protein.Hbond(31, 62, 'ABCD', range(9))
+    h2 = Protein.Hbond(31, 62, 'ABCD', range(9), 2)
     prt.hbonds.append(h2)
     pat = Pattern.Pattern(segments=[[30], [61]],
                           bonds=[Pattern.Bond('H', 30, 61, False, None)],
@@ -91,7 +91,7 @@ def test_grow():
 def test_findpattern2():
     cd = os.path.dirname(__file__)
     opt = Option.Option(os.path.join(cd, 'data', 'step105_opts'))
-    h1 = Protein.Hbond(15, 25, 'ABCD', range(9))
+    h1 = Protein.Hbond(15, 25, 'ABCD', range(9), 1)
     t1 = Protein.Tbond(24, 36, 'ABCD', range(9), 3.14)
     prt = Protein.Protein('test')
     prt.hbonds = [h1]
@@ -110,7 +110,7 @@ def test_findpattern2():
 
     assert pat == exp
 
-    h2 = Protein.Hbond(243, 251, 'LXLE', range(9))
+    h2 = Protein.Hbond(243, 251, 'LXLE', range(9), 2)
     t2 = Protein.Tbond(250, 340, 'ABCD', range(9), 0.45)
     prt2 = Protein.Protein('test2')
     prt2.hbonds = [h2]
@@ -119,7 +119,7 @@ def test_findpattern2():
     assert pat == pat2
 
     opt = Option.Option(os.path.join(cd, 'data', 'step106_opts'))
-    h1 = Protein.Hbond(2, 34, 'GAX?', range(9))
+    h1 = Protein.Hbond(2, 34, 'GAX?', range(9), 1)
     t1 = Protein.Tbond(23, 33, 'ABCD', range(0, -9, -1), 3.1)
     prt.hbonds = [h1]
     prt.tbonds = [t1]
@@ -166,8 +166,8 @@ def test_findpattern2():
 
 def test_getogtbonds():
     p = Protein.Protein('testprot')
-    p.hbonds = [Protein.Hbond(3, 13, 'ABCD', range(4)),
-                Protein.Hbond(24, 34, 'ABCD', range(4))]
+    p.hbonds = [Protein.Hbond(3, 13, 'ABCD', range(4), 1),
+                Protein.Hbond(24, 34, 'ABCD', range(4), 2)]
     p.tbonds = [Protein.Tbond(11, 21, 'ABCD', range(9), 0.12),
                 Protein.Tbond(14, 35, 'ABCD', range(9), 0.12)]
     pat = Pattern.Pattern('testpat')
