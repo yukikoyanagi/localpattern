@@ -8,7 +8,9 @@
 # File: patrot_prll.sh
 #
 # Description: This is the job script submitted by sbatch for
-#  loacalpattern analysis.
+#  loacalpattern analysis. Control steps to analyse by setting -J option;
+#  {name}-startstep-endstep. If -J option is not set, it uses the max_step
+#  set in the config.yaml.file.
 #
 # Author: Yuki Koyanagi
 #
@@ -20,8 +22,8 @@ echo Slurm_submit_dir: "$SLURM_SUBMIT_DIR"
 echo Start time: "$(date)"
 start=$(date +%s)
 
-echo Clearing scratch folder
-rm -f ${SCRATCH}/*
+# echo Clearing scratch folder
+# rm -f ${SCRATCH}/*
 
 echo Writing hostnames
 scontrol show hostnames $SLURM_NODELIST > /tmp/nodelist
@@ -31,7 +33,7 @@ module purge
 module add python-intel pp
 
 echo Starting servers
-srun ppserver.py -p 2048 -t 30 &
+srun ppserver.py -p 2048 -k 36000 &
 sleep 1 # sleep a bit to ensure that the servers have started
 
 echo Starting Python program
