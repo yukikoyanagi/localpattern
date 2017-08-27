@@ -12,7 +12,6 @@
 import argparse
 import os
 import glob
-import subprocess
 import math
 import cPickle
 import re
@@ -31,7 +30,7 @@ afpattern = '/work/austmathjea/cdp/step*/n{}/step*_assess'.format(
 ppservers = open('/tmp/nodelist').read().strip().split()
 if len(ppservers) > 1:
     ppservers = tuple(pp + ':2048' for pp in ppservers)
-    job_server = pp.Server(0, ppservers=ppservers)
+    job_server = pp.Server(0, ppservers=ppservers, socket_timeout=10800)
 else:
     job_server = pp.Server()
 
