@@ -79,6 +79,7 @@ def runclstrs(data, step):
 def runclstr(pattern, data, step):
     import os
     import subprocess
+    import uuid
 
     # Files and dirs
     rscript = os.path.join(os.path.expandvars('$SLURM_SUBMIT_DIR'),
@@ -87,7 +88,7 @@ def runclstr(pattern, data, step):
                          'improve_modebox.pl')
     stepd = os.path.join(os.path.expandvars('$LOCALSCRATCH'),
                          'step{}'.format(step))
-    rotf = os.path.join(stepd, pattern)
+    rotf = os.path.join(stepd, uuid.uuid4().hex)
 
     if not os.path.exists(stepd):
         try:
