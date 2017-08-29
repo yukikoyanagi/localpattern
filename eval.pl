@@ -402,7 +402,7 @@ sub process_summary {
     my $total = $summary->{total_obs};
     my $ncluster = scalar @{$summary->{clusters}};
     c("Processing %s", $fn);
-    c("pattern %s, length %s", $pattern, $length);
+    # c("pattern %s, length %s", $pattern, $length);
     c("total observations: %d", $total);
     c("#clusters: %d", $ncluster);
     c("\tid\t#obs\tpeakness\tmp-ratio\tmode");

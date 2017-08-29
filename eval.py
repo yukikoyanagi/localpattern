@@ -29,9 +29,9 @@ def appendsingles(step, workdir):
         lines.append('# Processing step{s}/{p}_Summary2.txt'.format(
             s=step, p=pattern
         ))
-        lines.append('# pattern {p}, length {l}'.format(
-            p=pattern.split('_')[0], l=pattern.split('_')[1]
-        ))
+        # lines.append('# pattern {p}, length {l}'.format(
+        #     p='_'.join(pattern.split('_')[0:2]), l=pattern.split('_')[-1]
+        # ))
         lines.append('# total observations: 1')
         lines.append('# #clusters: 1')
         lines.append('#\tid\t#obs\tpeakness\tmp-ratio\tmode')
@@ -46,11 +46,11 @@ def appendsingles(step, workdir):
         ))
         lines.append('#')
         lines.append('# Assessment: Single observation.')
-        lines.append('{pat}\t{l}\t{ix},{iy},{iz}\t'
+        lines.append('{pat}\t{ix},{iy},{iz}\t'
                      '{p};{fx},{fy},{fz}\t{s:.4f}\t'
                      '{a:.2f}\t{b:.2f}\t{c:.2f}\t'
                      '{d:.2f}\t{e:.2f}\t{f:.2f}'.format(
-                         pat=pattern, l=pattern.split('_')[1],
+                         pat=pattern,
                          ix=bx, iy=by, iz=bz,
                          p=phi, fx=x, fy=y, fz=z, s=100,
                          a=0, b=0, c=0, d=0, e=0, f=0
