@@ -18,7 +18,7 @@ The analysis is done in the following order:
    Run clustering analysis for each step. Generates summary.pkl file in /work/austmathjea/cdp/step*/n{min_for_cluster} directories.
    One can control the steps to run the analysis by specifying -J option in sbatch; {job name}.{start step}.{end step}
    This step takes approx. 3 hours on 32 slim nodes.
-4. evalab.sh
+4. eval.sh
    Evaluate clustering results to produce assessment files. Generates step*_assess file in /work/austmathjea/cdp/step*/n* 
    directories. Takes < 5 min on 1 slim node.
 5. pred_prll.sh
