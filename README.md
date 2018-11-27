@@ -20,7 +20,8 @@ The analysis is done in the following order:
    This step takes approx. 3 hours on 32 slim nodes.
 4. eval.sh
    Evaluate clustering results to produce assessment files. Generates step*_assess file in /work/austmathjea/cdp/step*/n* 
-   directories. Takes < 5 min on 1 slim node.
+   directories. The cutoff value can be specified using -J option in sbatch; {job name}-{cutoff}
+   Takes < 5 min on 1 slim node.
 5. pred_prll.sh
    This is the script that predicts rotations. Output prediction file is specified in the file as an argument to .py file. 
    Takes < 10 min on 16 slim nodes.
