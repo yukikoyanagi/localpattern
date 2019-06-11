@@ -157,7 +157,13 @@ for step in steps:
 
     rots = filtersingles(rotations, workdir)
     # Submit jobs for subset of data to avoid too many threads
-    for subset in chunk(rots):
+    nnodes = int(os.path.expandvars('$SLURM_NNODES'))
+    if len(steps) < nnodes*10:
+        # Ensure we utilise all available cores
+        n = nnodes*240
+    else:
+        n = 240
+    for subset in chunk(rots, n):
         clstr = job_server.submit(runclstrs,
                                   args=(subset, step),
                                   depfuncs=(runclstr,),

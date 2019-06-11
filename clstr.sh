@@ -23,6 +23,7 @@
 echo Running on "$(hostname)"
 echo Running job: "$SLURM_JOB_NAME"
 echo Available nodes: "$SLURM_NODELIST"
+echo Number of nodes: "$SLURM_NNODES"
 echo Slurm_submit_dir: "$SLURM_SUBMIT_DIR"
 echo Start time: "$(date)"
 start=$(date +%s)
