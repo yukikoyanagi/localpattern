@@ -36,7 +36,7 @@ module purge
 module add python-intel pp R
 
 echo Starting servers
-srun ppserver.py -p 2048 -t 30 &
+srun ppserver.py -p 2048 -k 36000 -t 30 &
 sleep 1 # sleep a bit to ensure that the servers have started
 
 echo Starting Python program

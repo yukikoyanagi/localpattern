@@ -15,6 +15,7 @@ import glob
 import math
 import cPickle
 import re
+import time
 import pp
 
 import conv
@@ -30,7 +31,7 @@ afpattern = '/work/austmathjea/cdp/step*/n{}/step*_assess'.format(
 ppservers = open('/tmp/nodelist').read().strip().split()
 if len(ppservers) > 1:
     ppservers = tuple(pp + ':2048' for pp in ppservers)
-    job_server = pp.Server(0, ppservers=ppservers, socket_timeout=10800)
+    job_server = pp.Server(ppservers=ppservers, socket_timeout=10800)
 else:
     job_server = pp.Server()
 
@@ -120,12 +121,24 @@ def listofbonds(pdir):
                 res.append((p, lineno+1))
     return res
 
+def readstepfile(sfile):
+    '''
+    Read step file, which is a comma- or space separated list of step
+    numbers to consider whem making predictions. 
+    '''
+    with open(sfile) as fh:
+        rdata = fh.read()
+    data = rdata.replace(',', ' ').strip().split()
+    return [int(d) for d in data]
 
-def main(pdir, mstep, outf):
+def main(pdir, outf, maxstep=None, stepfile=None):
     # Find local pattern around each bond in each test protein for each opts
     # files, and get the results together with the matching line
     # from the corresponding _assess file.
     afs = glob.glob(afpattern)
+    if stepfile:
+        validsteps = readstepfile(stepfile)
+    submittedsteps = []
     for af in afs:
         step = int(os.path.basename(af).split('_')[0].lstrip('step'))
         if os.path.exists(
@@ -133,23 +146,32 @@ def main(pdir, mstep, outf):
                     os.environ['SCRATCH'], 'step{}_score.pkl'.format(step))):
             print('step{}_score file exists. Skipping.'.format(step))
             continue
-        if step > mstep:
+        if maxstep and step > maxstep:
+            continue
+        if stepfile and step not in validsteps:
             continue
         job_server.submit(runstep,
                           args=(step, pdir, af),
                           group='step{}'.format(step))
+        submittedsteps.append(step)
 
     remaining = listofbonds(pdir)
 
-    job_server.wait()
+    #job_server.wait()
 
     filestodel = []
     preds = {}
-    for step in range(mstep, -1, -1):
+    for step in submittedsteps:
+        job_server.wait(group='step{}'.format(step))
         resf = os.path.join(os.environ['SCRATCH'],
                             'step{}_score.pkl'.format(step))
-        with open(resf, 'rb') as fh:
-            res = cPickle.load(fh)
+        while True:
+            try:
+                with open(resf, 'rb') as fh:
+                    res = cPickle.load(fh)
+                    break
+            except IOError:
+                time.sleep(30)
         with open(resf + '.read', 'w') as w:
             w.write('read.')
         newrem = []
@@ -242,9 +264,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('protdir', help='Directory containing '
                         'test protein files')
-    parser.add_argument('maxstep', type=int,
+    parser.add_argument('outfile', help='Output file')
+    parser.add_argument('--maxstep', '-m', type=int,
                         help='Maximum step number '
                         'to consider when making predictions.')
-    parser.add_argument('outfile', help='Output file')
+    parser.add_argument('--stepfile', '-s',
+                        help='File containing a list of step '
+                        'numbers to consider when making '
+                        'predictions.')
     args = parser.parse_args()
-    main(args.protdir, args.maxstep, args.outfile)
+    main(args.protdir, args.outfile,
+         maxstep=args.maxstep, stepfile=args.stepfile)

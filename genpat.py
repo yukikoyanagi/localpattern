@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import glob
 import os.path
 import cPickle
 import argparse
@@ -8,8 +7,12 @@ import argparse
 import Protein
 import Option
 
-def main(protdir, optfile, outfile):
-    pfiles = glob.glob('{}/*.txt'.format(os.path.normpath(protdir)))
+def main(protdir, lstf, optfile, outfile):
+    pfiles = []
+    with open(lstf) as fh:
+        for line in fh:
+            pfiles.append('{}/{}'.format(os.path.normpath(protdir),
+                                         line.strip()))
     opt = Option.Option(optfile)
 
     # Build dict of {(protid, lineno): pattern}
@@ -28,10 +31,12 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('protdir',
                         help='Directory containing protein files')
+    parser.add_argument('lstf',
+                        help='File with a list of protein files')
     parser.add_argument('optfile',
                         help='Option file (step##_opts)')
     parser.add_argument('outfile',
                         help='Output pkl file')
     args = parser.parse_args()
-    main(args.protdir, args.optfile, args.outfile)
+    main(args.protdir, args.lstf, args.optfile, args.outfile)
 

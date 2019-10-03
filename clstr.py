@@ -39,7 +39,7 @@ maxstep = cfg['max_step']
 # Set up servers
 ppservers = open('/tmp/nodelist').read().strip().split()
 ppservers = tuple(pp + ':2048' for pp in ppservers)
-job_server = pp.Server(0, ppservers=ppservers)
+job_server = pp.Server(ppservers=ppservers, socket_timeout=36000)
 
 
 def filtersingles(data, outdir):

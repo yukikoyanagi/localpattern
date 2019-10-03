@@ -36,7 +36,7 @@ sleep 1 # sleep a bit to ensure that the servers have started
 
 echo Starting Python program
 python pred_prll.py /work/austmathjea/cdp/test \
-       791 ./prediction.txt
+       ./prediction.txt -m 791 -s n1log_v37/steps.stp
 
 end=$(date +%s)
 echo End time: "$(date)"
