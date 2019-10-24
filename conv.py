@@ -55,7 +55,7 @@ def mat2ev(m):
     Convert a rotation matrix to the corresponding angle, unit
     vector pair
     '''
-    tr = np.trace(m)
+    tr = min(np.trace(m), 3)
     angle = math.acos((tr - 1)/2)
     if angle == 0:
         return 0, (1, 0, 0)
