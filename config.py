@@ -4,7 +4,7 @@ import yaml
 import os
 
 with open("config.yaml", "r") as f:
-    cfg = yaml.load(f)
+    cfg = yaml.full_load(f)
 if cfg['abacus']:
     workdir = os.environ['WORK']
     cfg['protdir'] = os.path.join(workdir, cfg['protdir'])

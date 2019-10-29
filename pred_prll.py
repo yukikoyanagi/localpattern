@@ -161,7 +161,7 @@ def main(pdir, outf, maxstep=None, stepfile=None):
 
     filestodel = []
     preds = {}
-    for step in submittedsteps:
+    for step in sorted(submittedsteps, reverse=True):
         job_server.wait(group='step{}'.format(step))
         resf = os.path.join(os.environ['SCRATCH'],
                             'step{}_score.pkl'.format(step))
