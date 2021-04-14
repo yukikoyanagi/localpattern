@@ -42,8 +42,8 @@ max_step: 791  # max step number to include in analysis
 min_for_cluster: 30  # min freq for clustering analysis
 
 abacus: False  # Run this on abacus cluster. Prepends all paths with $WORK.
-protdir: cdp/prot
-optsdir: cdp/opts
-tertdir: cdp/tertiary
-outdir: cdp
-cpu_per_node: 24
+##protdir: data/prot
+optsdir: data/opts
+tertdir: data/tertiary
+##outdir: cdp
+##cpu_per_node: 24

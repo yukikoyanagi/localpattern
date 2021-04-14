@@ -2,44 +2,51 @@
 #
 # File: filter.py
 #
-# Created by: au447708 on 8/15/17
-#
-# Description:
+# Description: Filter pattern data where the number of occurrences is less
+# than the minimum specified in config.yaml.
 
-import os
+
+import os.path
+import argparse
 import cPickle
+import glob
 from config import cfg
 
-def main():
-    wdir = os.path.join(os.environ['WORK'], 'cdp')
-    n = int(os.environ['SLURM_JOB_NUM_NODES'])
-    p = int(os.environ['SLURM_PROCID'])
-    t = int(os.environ['SLURM_NTASKS_PER_NODE'])
-    steps = range(p, cfg['max_step']+1, n*t)
-    for step in steps:
-        try:
-            ndir = os.path.join(wdir, 'step{}'.format(step),
-                                'n{}'.format(cfg['min_for_cluster']))
-            os.mkdir(ndir)
-        except OSError:
-            print('{} exists. Checking rotation file.'.format(ndir))
-            if os.path.exists(ndir + '/rotations.pkl'):
-                print('Skipping step {}.'.format(step))
-                continue
-        inrot = os.path.join(wdir, 'step{}'.format(step), 'rotations.pkl')
-        try:
-            fh = open(inrot)
-        except IOError:
-            print('Could not open {}. Skipping step {}'.format(inrot, step))
-            continue
-        else:
-            with fh:
-                pr = cPickle.load(fh)
-        outrot = {p: pr[p] for p in pr if len(pr[p]) >= cfg['min_for_cluster']}
-        outf = os.path.join(ndir, 'rotations.pkl')
-        with open(outf, 'wb') as o:
-            cPickle.dump(outrot, o, -1)
+def get_rot(rot_txt):
+    uv, phi = rot_txt.split(':')
+    phi = float(phi)
+    x, y, z = map(float, uv.split(','))
+    return (x, y, z, phi)
+    
+            
+def main(ind, outd, step):
+    pr = {}
 
+    for fn in glob.glob('{}/*.patrot'.format(ind)):
+        with open(fn) as fh:
+            for line in fh:
+                s, pat, rots = line.split()
+                s = int(s)
+                if s==step:
+                    rot = get_rot(rots)
+                    try:
+                        pr[pat].append(rot)
+                    except KeyError:
+                        pr[pat] = [rot]
+
+    results = {p: pr[p] for p in pr if len(pr[p]) >= cfg['min_for_cluster']}
+    outf = os.path.join(outd, 'step{}_rotations.pkl'.format(step))
+    with open(outf, 'wb') as fh:
+        cPickle.dump(results, fh, -1)
+            
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('in_dir',
+                        help='Directory with pattern-rotation files.')
+    parser.add_argument('out_dir',
+                        help='Output directory.')
+    parser.add_argument('step', type=int,
+                        help='Step number to process.')
+    args = parser.parse_args()
+    main(args.in_dir, args.out_dir, args.step)
