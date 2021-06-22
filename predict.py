@@ -43,6 +43,8 @@ def runstep(step, prot, af):
         v = map(float, e.split(';')[1].split(','))
         ev = [n] + v
         score = float(s)
+        # Penalty for small window size
+        score = score - math.exp( 3 - max(3, opt.window))
         scores[pat] = (mode, ev, score)
 
     res = {}

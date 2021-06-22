@@ -43,7 +43,7 @@ min_for_cluster: 30  # min freq for clustering analysis
 
 abacus: False  # Run this on abacus cluster. Prepends all paths with $WORK.
 ##protdir: data/prot
-optsdir: data/opts
+optsdir: sampledata/opts
 tertdir: data/tertiary
 ##outdir: cdp
 ##cpu_per_node: 24
